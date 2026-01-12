@@ -1,7 +1,7 @@
 <launch>
   <arg name="use_jsp" default="true"/>
   <arg name="use_rviz" default="true"/>
-  <arg name="color" default="purple" choices="purple,red,blue,green"/>
+  <arg name="color" default="purple"/>
   <!-- This robot state publisher is included if the specified robot is not slide -->
   <node pkg="robot_state_publisher" exec="robot_state_publisher">
      <param

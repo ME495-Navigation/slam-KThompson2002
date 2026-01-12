@@ -3,12 +3,13 @@
   xmlns:xacro="http://ros.org/wiki/xacro">
   <!-- <xacro:include filename="$(find turtlebot3_description)/urdf/common_properties.urdf"/> -->
   <xacro:property name="turtlebot_config" value="${xacro.load_yaml('$(find nuturtle_description)/config/diff_params.yaml')}"/>
-  <xacro:include filename="materials.urdf.xacro"/>
+  <xacro:include filename="colors.urdf.xacro"/>
   <xacro:property name="wheel_radius" value="${turtlebot_config['/**']['ros__parameters']['wheel_radius']}"/>
-  <xacro:property name="track_width" value="${turtle_config['/**']['ros__parameters']['track_width']}"/>
-  <xacro:property name="collision_radius" value="${turtle_config['/**']['ros__parameters']['collision_radius']}"/>
+  <xacro:property name="track_width" value="${turtlebot_config['/**']['ros__parameters']['track_width']}"/>
+  <xacro:property name="collision_radius" value="${turtlebot_config['/**']['ros__parameters']['collision_radius']}"/>
 
   <xacro:arg name="color" default="purple"/>
+  <xacro:property name="color" value="$(arg color)"/>
   <xacro:arg name="namespace" default=""/>
   <xacro:property name="namespace" value="$(arg namespace)"/>
 
@@ -25,14 +26,6 @@
     <color rgba="0.4 0.4 0.4 1.0"/>
   </material>
 
-  <material name="blue">
-    <color rgba="0.0 0.0 0.8 1.0"/>
-  </material>
-
-  <material name="green">
-    <color rgba="0.0 0.8 0.0 1.0"/>
-  </material>
-
   <material name="grey">
     <color rgba="0.5 0.5 0.5 1.0"/>
   </material>
@@ -43,10 +36,6 @@
 
   <material name="brown">
     <color rgba="0.8706 0.8118 0.7647 1.0"/>
-  </material>
-
-  <material name="red">
-    <color rgba="0.8 0.0 0.0 1.0"/>
   </material>
 
   <material name="white">
@@ -65,7 +54,7 @@
     <visual>
       <origin xyz="-0.032 0 0.0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://nuturtle_description/meshes/bases/burger_base.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://nuturtle_description/mesh/burger_base.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="${color}"/>
     </visual>
@@ -87,7 +76,7 @@
   <joint name="${namespace}wheel_left_joint" type="continuous">
     <parent link="${namespace}base_link"/>
     <child link="${namespace}wheel_left_link"/>
-    <origin xyz="0.0 ${track_width}/2 0.023" rpy="-1.57 0 0"/>
+    <origin xyz="0.0 ${track_width/2} 0.023" rpy="-1.57 0 0"/>
     <axis xyz="0 0 1"/>
   </joint>
 
@@ -95,7 +84,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.57 0 0"/>
       <geometry>
-        <mesh filename="package://nuturtle_description/meshes/wheels/left_tire.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://nuturtle_description/mesh/wheels/left_tire.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -117,7 +106,7 @@
   <joint name="${namespace}wheel_right_joint" type="continuous">
     <parent link="${namespace}base_link"/>
     <child link="${namespace}wheel_right_link"/>
-    <origin xyz="0.0 -${track_width}/2 0.023" rpy="-1.57 0 0"/>
+    <origin xyz="0.0 -${track_width/2} 0.023" rpy="-1.57 0 0"/>
     <axis xyz="0 0 1"/>
   </joint>
 
@@ -125,7 +114,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.57 0 0"/>
       <geometry>
-        <mesh filename="package://nuturtle_description/meshes/wheels/right_tire.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://nuturtle_description/mesh/wheels/right_tire.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -183,7 +172,7 @@
     <visual>
       <origin xyz="0 0 0.0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://nuturtle_description/meshes/sensors/lds.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://nuturtle_description/mesh/lds.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
