@@ -14,13 +14,16 @@ project(turtlelib)
 # here: we find the eigen library as per the instruction
 # https://eigen.tuxfamily.org/dox/TopicCMakeGuide.html
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(Catch2 3 REQUIRED)
 
 # Create a library.  Can specify if it is shared or static but usually
 # you don't need or want to.
 # name is the name of the library without the extension or lib prefix
 # name creates a cmake "target" (in this case the target is called "libname")
 # add_library(libname src/turtlelib.cpp)
-add_library(libname INTERFACE)
+# add_library(libname )
+add_library(libname src/geometry2d.cpp src/se2d.cpp)
+
 
 # Use target_include_directories so that #include"mylibrary/header.hpp" works
 # The use of the <BUILD_INTERFACE> and <INSTALL_INTERFACE> is because when
@@ -30,24 +33,25 @@ add_library(libname INTERFACE)
 # When used from the installed location, headers are in the
 # system include/ directory
 target_include_directories(libname
-    INTERFACE
+    PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
     $<INSTALL_INTERFACE:include/>)
 
 # specify additional compilation flags for the library
 # Public causes the flags to propagate to anything
 # that links against this library
-target_compile_options(libname INTERFACE -Wall -Wextra -pedantic)
+target_compile_options(libname PUBLIC -Wall -Wextra -pedantic)
 
 # Enable c++23 support.
 # PUBLIC causes the features to propagate to anything
 # that links against this library
 # whereas PRIVATE would make it apply only to the library itself
-target_compile_features(libname INTERFACE cxx_std_23)
+target_compile_features(libname PUBLIC cxx_std_23)
 
 # Create an executable from the following source code files
 # The Name of the executable creates a cmake "target"
 add_executable(converter src/converter.cpp)
+add_executable(tests tests/test_geometry2d.cpp tests/test_se2d.cpp)
 
 # Use target_link_libraries to add dependencies to a "target"
 # (e.g., a library or executable)
@@ -57,6 +61,7 @@ add_executable(converter src/converter.cpp)
 # Because libname has PUBLIC cxx_std_23 as a compile feature
 # Name will also be compiled with c++23 as the standard.
 target_link_libraries(converter Eigen3::Eigen libname)
+target_link_libraries(tests PRIVATE Catch2::Catch2WithMain libname)
 
 # install the include files by copying the whole include directory
 install(DIRECTORY include/mylibrary DESTINATION include)

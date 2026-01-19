@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/converter.dir/src/converter.cpp.o -o converter 
