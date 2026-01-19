@@ -14,7 +14,7 @@ project(turtlelib)
 # here: we find the eigen library as per the instruction
 # https://eigen.tuxfamily.org/dox/TopicCMakeGuide.html
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
-find_package(Catch2 3 REQUIRED)
+
 
 # Create a library.  Can specify if it is shared or static but usually
 # you don't need or want to.
@@ -22,7 +22,7 @@ find_package(Catch2 3 REQUIRED)
 # name creates a cmake "target" (in this case the target is called "libname")
 # add_library(libname src/turtlelib.cpp)
 # add_library(libname )
-add_library(libname src/geometry2d.cpp src/se2d.cpp)
+add_library(turtlelib src/geometry2d.cpp src/se2d.cpp)
 
 
 # Use target_include_directories so that #include"mylibrary/header.hpp" works
@@ -32,7 +32,7 @@ add_library(libname src/geometry2d.cpp src/se2d.cpp)
 # During the build, the headers are read from the source code directory
 # When used from the installed location, headers are in the
 # system include/ directory
-target_include_directories(libname
+target_include_directories(turtlelib
     PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
     $<INSTALL_INTERFACE:include/>)
@@ -40,18 +40,31 @@ target_include_directories(libname
 # specify additional compilation flags for the library
 # Public causes the flags to propagate to anything
 # that links against this library
-target_compile_options(libname PUBLIC -Wall -Wextra -pedantic)
+target_compile_options(turtlelib PUBLIC -Wall -Wextra -pedantic)
 
 # Enable c++23 support.
 # PUBLIC causes the features to propagate to anything
 # that links against this library
 # whereas PRIVATE would make it apply only to the library itself
-target_compile_features(libname PUBLIC cxx_std_23)
+target_compile_features(turtlelib PUBLIC cxx_std_23)
 
 # Create an executable from the following source code files
 # The Name of the executable creates a cmake "target"
+include(CTest)
 add_executable(converter src/converter.cpp)
-add_executable(tests tests/test_geometry2d.cpp tests/test_se2d.cpp)
+
+if(BUILD_TESTING)
+    find_package(Catch2 3 REQUIRED)
+    add_executable(test_geometry2d tests/test_geometry2d.cpp)
+    add_executable(test_se2d tests/test_se2d.cpp)
+    # add_executable(test_svg tests/test_svg.cpp)   
+    add_test(NAME test_geometry2d COMMAND test_geometry2d)
+    add_test(NAME test_se2d COMMAND test_se2d)
+    # add_test(NAME test_svg COMMAND test_svg)
+    target_link_libraries(test_geometry2d Catch2::Catch2WithMain turtlelib)
+    target_link_libraries(test_se2d Catch2::Catch2WithMain turtlelib)
+    # target_link_libraries(test_svg Catch2::Catch2WithMain turtlelib)
+endif()
 
 # Use target_link_libraries to add dependencies to a "target"
 # (e.g., a library or executable)
@@ -60,11 +73,11 @@ add_executable(tests tests/test_geometry2d.cpp tests/test_se2d.cpp)
 # and paths to th locations of header files.
 # Because libname has PUBLIC cxx_std_23 as a compile feature
 # Name will also be compiled with c++23 as the standard.
-target_link_libraries(converter Eigen3::Eigen libname)
-target_link_libraries(tests PRIVATE Catch2::Catch2WithMain libname)
+target_link_libraries(converter Eigen3::Eigen turtlelib)
+
 
 # install the include files by copying the whole include directory
-install(DIRECTORY include/mylibrary DESTINATION include)
+install(DIRECTORY include/turtlelib DESTINATION include)
 
 # Create a CMake Exported Target containing the lib and exe.
 # Also create CMake Export called project_name-targets

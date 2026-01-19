@@ -7,9 +7,9 @@
 #include <numbers>
 #include <format>
 
-#include "mylibrary/se2d.hpp"
-#include "mylibrary/geometry2d.hpp"
-#include "mylibrary/angle.hpp"
+#include "turtlelib/se2d.hpp"
+#include "turtlelib/geometry2d.hpp"
+#include "turtlelib/angle.hpp"
 
 using Catch::Matchers::WithinAbs;
 
@@ -179,7 +179,7 @@ TEST_CASE("Transform2D apply operator() for Twist2D (adjoint)")
 TEST_CASE("Twist2D input with brackets", "[twist]") // Gregory, Aiosa
 {
     std::stringstream ss;
-    ss.str("<90 deg, 1.0, 2.0>"); // Test degrees input
+    ss.str("<90 deg , 1.0, 2.0>"); // Test degrees input
 
     turtlelib::Twist2D tw;
 

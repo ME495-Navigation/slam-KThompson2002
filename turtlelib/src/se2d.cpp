@@ -1,4 +1,4 @@
-#include "mylibrary/se2d.hpp"
+#include "turtlelib/se2d.hpp"
 
 #include <cmath>
 #include <istream>
@@ -6,7 +6,7 @@
 #include <string>
 
 
-namespace turtlelib
+namespace turtlelib                                
 {
     namespace
     {
@@ -15,26 +15,62 @@ namespace turtlelib
         //
         // This helper is intentionally simple: it checks the next non-whitespace character;
         // if it's alphabetic, it reads a token.
-        double read_angle_with_optional_unit(std::istream & is, double val)
-        {
-            is >> std::ws;
-            const int c = is.peek();
-            if (c == std::char_traits<char>::eof()) return val;
+        // double read_angle_with_optional_unit(std::istream & is, double val)
+        // {
+        //     is >> std::ws;
+        //     const int c = is.peek();
+        //     if (c == std::char_traits<char>::eof()) return val;
 
-            if (std::isalpha(static_cast<unsigned char>(c)))
-            {
-                std::string unit;
-                is >> unit;
-                if (!unit.empty())
-                {
-                    const char u = unit.front();
-                    if (u == 'd' || u == 'D') return deg2rad(val);
-                    // if starts with r/R: radians, do nothing
-                }
+        //     if (std::isalpha(static_cast<unsigned char>(c)))
+        //     {
+        //         std::string unit;
+        //         is >> unit;
+        //         if (!unit.empty())
+        //         {
+        //             const char u = unit.front();
+        //             if (u == 'd' || u == 'D') return deg2rad(val);
+        //             // if starts with r/R: radians, do nothing
+        //         }
+        //     }
+        //     return val;
+        // }
+        static double read_angle_with_optional_unit(std::istream& is, double theta)
+        {
+            is >> std::ws;  // skip whitespace (but not punctuation)
+
+            std::string unit;
+            while (is.good()) {
+                int c = is.peek();
+                if (c == EOF) break;
+
+                // Stop at punctuation (comma/brace/angle bracket/etc) because it's not alpha
+                if (!std::isalpha(static_cast<unsigned char>(c))) break;
+
+                unit.push_back(static_cast<char>(is.get()));  // consume the letter
             }
-            return val;
+
+            // normalize to lowercase
+            for (char& ch : unit) 
+                ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+            
+            if (unit.empty() || unit[0] == 'r') return theta;
+            if (unit[0] == 'd') return turtlelib::deg2rad(theta);
+
+            is.setstate(std::ios::failbit);
+            return theta;
+
+            // if (unit == "deg") {
+            //     return turtlelib::deg2rad(theta);
+            // } else if (unit == "rad" || unit.empty()) {
+            //     return theta;
+            // } else {
+            //     // unknown unit token (like "degg" or "rads")
+            //     is.setstate(std::ios::failbit);
+            //     return theta;
+            // }
         }
 
+        
         bool expect(std::istream & is, char wanted)
         {
             char c = '\0';
@@ -68,7 +104,7 @@ namespace turtlelib
             if (!(is >> tmp.omega)) return is;
             tmp.omega = read_angle_with_optional_unit(is, tmp.omega); // rad/s or deg/s -> rad/s
 
-            if (!expect(is, ',') || !expect(is, ' ')) return is;
+            if (!expect(is, ',')) return is;
             if (!(is >> tmp.x)) return is;
 
             if (!expect(is, ',')) return is;
@@ -202,6 +238,12 @@ namespace turtlelib
         Transform2D tmp = tf;
         is >> std::ws;
 
+        auto clear_eof_only = [&]() {
+            if (is.eof() && !is.fail() && !is.bad()) {
+                is.clear(is.rdstate() & ~std::ios::eofbit);
+            }
+        };
+
         if (is.peek() == '{')
         {
             if (!expect(is, '{')) return is;
@@ -223,6 +265,7 @@ namespace turtlelib
 
             tmp = Transform2D(Vector2D{x, y}, theta);
             tf = tmp;
+            clear_eof_only();
             return is;
         }
 
@@ -238,6 +281,7 @@ namespace turtlelib
 
         tmp = Transform2D(Vector2D{dx, dy}, theta);
         tf = tmp;
+        clear_eof_only();
         return is;
     }
 
