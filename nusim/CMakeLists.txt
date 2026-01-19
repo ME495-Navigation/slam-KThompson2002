@@ -7,9 +7,20 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+
+add_executable(nusim src/nusim.cpp)
+target_link_libraries(nusim PUBLIC
+  ${std_msgs_TARGETS}
+  ${std_srvs_TARGETS}
+  rclcpp::rclcpp
+)
+# target_link_libraries(nusim PUBLIC rclcpp::rclcpp ${std_msgs_TARGETS})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -22,5 +33,15 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+install(TARGETS 
+  nusim
+  DESTINATION lib/${PROJECT_NAME})
+
+# install(DIRECTORY
+#   launch
+#   config
+#   DESTINATION share/${PROJECT_NAME}
+# )
 
 ament_package()
