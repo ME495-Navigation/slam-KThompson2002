@@ -63,7 +63,8 @@ public:
 
     publisher_ = this->create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_walls = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/real_walls", 10);
-    marker_obs = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/real_obstacles", 10);
+    marker_obs = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/real_obstacles",
+      10);
     const auto period = std::chrono::duration<double>(1.0 / static_cast<double>(rate));
     timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(period),
@@ -100,7 +101,7 @@ private:
     double radius)
   {
     visualization_msgs::msg::Marker m;
-    
+
     m.header.frame_id = "nusim/world";
     m.header.stamp = this->now();
 
@@ -113,7 +114,7 @@ private:
     m.pose.position.x = x;
     m.pose.position.y = y;
     m.pose.position.z = 0.125;
-    m.pose.orientation.w = 1.0; 
+    m.pose.orientation.w = 1.0;
 
     m.scale.x = 2 * radius;
     m.scale.y = 2 * radius;
@@ -213,8 +214,8 @@ private:
   }
 
   void reset_callback(
-    const std::shared_ptr<std_srvs::srv::Empty::Request> /*req*/,
-    std::shared_ptr<std_srvs::srv::Empty::Response> /*res*/)
+    const std::shared_ptr<std_srvs::srv::Empty::Request>/*req*/,
+    std::shared_ptr<std_srvs::srv::Empty::Response>/*res*/)
   {
     timestep_.data = 0;
     RCLCPP_INFO(this->get_logger(), "Reset timestep to 0");
