@@ -3,18 +3,22 @@
   <arg name="use_rviz" default="true"/>
   <arg name="color" default="purple"/>
   <!-- This robot state publisher is included if the specified robot is not slide -->
-  <node pkg="robot_state_publisher" exec="robot_state_publisher">
-     <param
-        name="robot_description"
-        value="$(command '$(exec-in-pkg xacro xacro)
-               $(find-pkg-share nuturtle_description)/urdf/turtlebot3_burger.urdf.xacro
-               color:=$(var color)')" />
+  <group>
+    <push_ros_namespace namespace="$(var color)" />
 
-      <param name="frame_prefix" value="$(var color)/"/>
-  </node>
+    <node pkg="robot_state_publisher" exec="robot_state_publisher">
+      <param
+          name="robot_description"
+          value="$(command '$(exec-in-pkg xacro xacro)
+                $(find-pkg-share nuturtle_description)/urdf/turtlebot3_burger.urdf.xacro
+                color:=$(var color)')" />
 
-  <node pkg="joint_state_publisher" exec="joint_state_publisher" if="$(eval '\'$(var use_jsp)\'== \'true\'')" />
+        <param name="frame_prefix" value="$(var color)/"/>
+    </node>
 
-  <!-- rviz will enable us to see the robot -->
-  <node pkg="rviz2" exec="rviz2" args="-d $(find-pkg-share nuturtle_description)/config/load_one.rviz" if="$(eval '\'$(var use_rviz)\'== \'true\'')" />
+    <node pkg="joint_state_publisher" exec="joint_state_publisher" if="$(eval '\'$(var use_jsp)\'== \'true\'')" />
+
+    <!-- rviz will enable us to see the robot -->
+    <node pkg="rviz2" exec="rviz2" args="-d $(find-pkg-share nuturtle_description)/config/load_one.rviz" if="$(eval '\'$(var use_rviz)\'== \'true\'')" />
+  </group>
 </launch>

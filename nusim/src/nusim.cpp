@@ -12,6 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/**
+ * \file nusim.cpp
+ * \brief A simple 2D simulator node that publishes time, a static robot pose TF, and visualization markers.
+ *
+ * nusimulator:
+ *  - Publishes a timestep counter on `~/timestep` as std_msgs::msg::UInt64.
+ *  - Broadcasts a TF transform from `nusim/world` to `red/base_footprint` using the configured initial pose.
+ *  - Publishes MarkerArray walls on `~/real_walls` and obstacle cylinders on `~/real_obstacles`.
+ *  - Provides a `~/reset` service that resets timestep to 0 and reloads initial pose parameters.
+ *
+ * Parameters:
+ *  - rate (int): Timer update rate in Hz (default 100)
+ *  - x0 (double): Initial x position of the robot in world frame (default 0.0)
+ *  - y0 (double): Initial y position of the robot in world frame (default 0.0)
+ *  - theta0 (double): Initial yaw of the robot in world frame [rad] (default 0.0)
+ *  - arena_x_length (double): Arena length in x [m] (default 7.0)
+ *  - arena_y_length (double): Arena length in y [m] (default 7.0)
+ *  - obstacles.x (double[]): Obstacle x coordinates [m] (default empty)
+ *  - obstacles.y (double[]): Obstacle y coordinates [m] (default empty)
+ *  - obstacles.r (double): Obstacle radius [m] (default 0.0)
+ */
+
 #include <chrono>
 #include <memory>
 #include <string>
@@ -27,9 +49,32 @@
 
 using namespace std::chrono_literals;
 
+/**
+ * \class nusimulator
+ * \brief ROS 2 node that periodically publishes simulation time, TF, and RViz markers.
+ *
+ * The node runs a wall timer at a configurable rate. Each tick:
+ *  - Increments and publishes an internal timestep counter.
+ *  - Broadcasts the robot pose transform using the current x0_, y0_, theta0_ state.
+ *  - Publishes wall markers that form a rectangle boundary using arena_x_length and arena_y_length.
+ *  - Publishes obstacle cylinder markers using the `obstacles.*` parameters.
+ *
+ * The `~/reset` service resets the timestep counter and reloads x0, y0, theta0 from parameters.
+ */
 class nusimulator : public rclcpp::Node
 {
 public:
+  /**
+   * \brief Construct the nusimulator node and initialize ROS interfaces.
+   *
+   * Declares and reads parameters, validates obstacle coordinate arrays, sets up:
+   *  - TF broadcaster
+   *  - Publishers: `~/timestep`, `~/real_walls`, `~/real_obstacles`
+   *  - Wall timer running at `rate` Hz
+   *  - Reset service `~/reset`
+   *
+   * If obstacle x and y arrays have different lengths, the node logs and shuts down.
+   */
   nusimulator()
   : Node("nusimulator")
   {
@@ -95,6 +140,21 @@ private:
   std::vector<double> ys;
   double r;
 
+  /**
+   * \brief Create a cylindrical RViz marker representing an obstacle.
+   *
+   * Marker properties:
+   *  - frame_id: "nusim/world"
+   *  - type: CYLINDER
+   *  - color: opaque red
+   *  - scale: diameter = 2*radius in x/y, fixed height in z
+   *
+   * \param id Unique marker ID within its namespace.
+   * \param x Obstacle x position in world frame [m].
+   * \param y Obstacle y position in world frame [m].
+   * \param radius Obstacle radius [m].
+   * \return A fully-populated visualization_msgs::msg::Marker.
+   */
   visualization_msgs::msg::Marker makeCylinder(
     int id,
     double x, double y,
@@ -129,6 +189,22 @@ private:
     return m;
   }
 
+    /**
+   * \brief Create a rectangular RViz marker (CUBE) representing a wall segment.
+   *
+   * Marker properties:
+   *  - frame_id: "nusim/world"
+   *  - type: CUBE
+   *  - color: opaque red
+   *  - scale: (x_length, y_length, fixed height)
+   *
+   * \param id Unique marker ID within its namespace.
+   * \param x Rectangle center x position in world frame [m].
+   * \param y Rectangle center y position in world frame [m].
+   * \param x_length Rectangle length along x [m].
+   * \param y_length Rectangle length along y [m].
+   * \return A fully-populated visualization_msgs::msg::Marker.
+   */
   visualization_msgs::msg::Marker makeRectangle(
     int id,
     double x, double y,
@@ -163,6 +239,15 @@ private:
     return m;
   }
 
+  /**
+   * \brief Periodic timer callback that advances simulation outputs.
+   *
+   * Actions performed each tick:
+   *  - Increment timestep_ and publish on `~/timestep`.
+   *  - Broadcast TF: "nusim/world" -> "red/base_footprint" using (x0_, y0_, theta0_).
+   *  - Publish wall MarkerArray forming an arena boundary on `~/real_walls`.
+   *  - Publish obstacle cylinder MarkerArray using xs/ys and radius r on `~/real_obstacles`.
+   */
   void timer_callback()
   {
     timestep_.data++;
@@ -176,15 +261,10 @@ private:
     t.header.frame_id = "nusim/world";
     t.child_frame_id = "red/base_footprint";
 
-    // Turtle only exists in 2D, thus we get x and y translation
-    // coordinates from the message and set the z coordinate to 0
     t.transform.translation.x = x0_;
     t.transform.translation.y = y0_;
     t.transform.translation.z = 0.0;
 
-    // For the same reason, turtle can only rotate around one axis
-    // and this why we set rotation in x and y to 0 and obtain
-    // rotation in z axis from the message
     tf2::Quaternion q;
     q.setRPY(0, 0, this->theta0_);
     t.transform.rotation.x = q.x();
@@ -213,6 +293,14 @@ private:
     marker_obs->publish(obs);
   }
 
+   /**
+   * \brief Reset service callback.
+   *
+   * Resets the timestep counter to 0 and reloads x0, y0, theta0 from parameters.
+   *
+   * \param req Empty request (unused).
+   * \param res Empty response (unused).
+   */
   void reset_callback(
     const std::shared_ptr<std_srvs::srv::Empty::Request>/*req*/,
     std::shared_ptr<std_srvs::srv::Empty::Response>/*res*/)
@@ -225,7 +313,9 @@ private:
   }
 };
 
-
+/**
+ * \brief Entry point. Initializes ROS 2 and spins the nusimulator node.
+ */
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
