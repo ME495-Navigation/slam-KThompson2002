@@ -177,8 +177,8 @@ private:
 
     // Turtle only exists in 2D, thus we get x and y translation
     // coordinates from the message and set the z coordinate to 0
-    t.transform.translation.x = this->x0_;
-    t.transform.translation.y = this->y0_;
+    t.transform.translation.x = x0_;
+    t.transform.translation.y = y0_;
     t.transform.translation.z = 0.0;
 
     // For the same reason, turtle can only rotate around one axis
@@ -195,18 +195,18 @@ private:
     tf_broadcaster_->sendTransform(t);
 
     visualization_msgs::msg::MarkerArray arr;
-    const double px = this->arena_x_length / 2;
-    const double py = this->arena_y_length / 2;
-    arr.markers.push_back(makeRectangle(0, px, 0, 0.1, this->arena_y_length));
-    arr.markers.push_back(makeRectangle(1, 0, py, this->arena_x_length, 0.1));
-    arr.markers.push_back(makeRectangle(2, -px, 0, 0.1, this->arena_y_length));
-    arr.markers.push_back(makeRectangle(3, 0, -py, this->arena_x_length, 0.1));
+    const double px = arena_x_length / 2;
+    const double py = arena_y_length / 2;
+    arr.markers.push_back(makeRectangle(0, px + 0.05, 0, 0.1, arena_y_length + 0.2));
+    arr.markers.push_back(makeRectangle(1, 0, py + 0.05, arena_x_length, 0.1));
+    arr.markers.push_back(makeRectangle(2, -px - 0.05, 0, 0.1, arena_y_length + 0.2));
+    arr.markers.push_back(makeRectangle(3, 0, -py - 0.05, arena_x_length, 0.1));
 
     marker_walls->publish(arr);
 
     visualization_msgs::msg::MarkerArray obs;
     for (std::size_t i = 0; i < xs.size(); i++) {
-      obs.markers.push_back(makeCylinder(i, this->xs[i], this->ys[i], this->r));
+      obs.markers.push_back(makeCylinder(i, xs.at(i), ys.at(i), r));
     }
 
     marker_obs->publish(obs);
