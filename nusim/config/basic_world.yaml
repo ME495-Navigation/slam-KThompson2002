@@ -1,0 +1,11 @@
+/**:
+  ros__parameters:
+    x0: -0.6
+    y0: 0.3
+    theta0: 1.28
+    obstacles:
+      x: [-0.4, 0.7, 0.5]
+      y: [-0.7, -0.8, 0.8]
+      r: 0.038
+    arena_x_length: 7.0
+    arena_y_length: 7.0

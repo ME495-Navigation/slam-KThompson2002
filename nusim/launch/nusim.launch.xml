@@ -1,0 +1,19 @@
+<launch>
+    <!-- <arg name="use_rviz" default="true" /> -->
+    <arg name="world_config" default="basic_world.yaml" description=".yaml file to configure the world"/>
+    <node pkg="nusim" exec="nusimulator" name="nusimulator">
+        <param from="$(find-pkg-share nusim)/config/$(var world_config)"/>
+    </node>
+    <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.xml">
+         <arg name="use_jsp" value="true"/>
+         <arg name="use_rviz" value="false"/>
+         <arg name="color" value="red"/>
+    </include>
+    <!-- <node pkg="tf2_ros" exec="static_transform_publisher"
+        args="0.0 -1.0 0.0 0 0 0 nusim/world red/odom"/>
+
+    <node pkg="tf2_ros" exec="static_transform_publisher"
+      args="0 0 0 0 0 0 red/odom red/base_footprint"/> -->
+
+    <node pkg="rviz2" exec="rviz2" args="-d $(find-pkg-share nusim)/config/nusim.rviz" />
+</launch>
