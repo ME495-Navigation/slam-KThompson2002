@@ -10,30 +10,11 @@ namespace turtlelib
 {
     namespace
     {
-        // Read optional unit token (no spaces). If present and starts with 'd'/'D' or 'r'/'R',
-        // convert the angle accordingly. If no token is present, assume radians.
-        //
-        // This helper is intentionally simple: it checks the next non-whitespace character;
-        // if it's alphabetic, it reads a token.
-        // double read_angle_with_optional_unit(std::istream & is, double val)
-        // {
-        //     is >> std::ws;
-        //     const int c = is.peek();
-        //     if (c == std::char_traits<char>::eof()) return val;
-
-        //     if (std::isalpha(static_cast<unsigned char>(c)))
-        //     {
-        //         std::string unit;
-        //         is >> unit;
-        //         if (!unit.empty())
-        //         {
-        //             const char u = unit.front();
-        //             if (u == 'd' || u == 'D') return deg2rad(val);
-        //             // if starts with r/R: radians, do nothing
-        //         }
-        //     }
-        //     return val;
-        // }
+        /// \brief Read angle unit for the Twist2D and Transform2D istream functions
+        /// \param is The input stream for Twist2D or Transform2D
+        /// \param theta The input angle to be converted
+        /// \return The final angle to be saved
+        // Inline Citation [4] - Start
         static double read_angle_with_optional_unit(std::istream& is, double theta)
         {
             is >> std::ws;  // skip whitespace (but not punctuation)
@@ -58,17 +39,8 @@ namespace turtlelib
 
             is.setstate(std::ios::failbit);
             return theta;
-
-            // if (unit == "deg") {
-            //     return turtlelib::deg2rad(theta);
-            // } else if (unit == "rad" || unit.empty()) {
-            //     return theta;
-            // } else {
-            //     // unknown unit token (like "degg" or "rads")
-            //     is.setstate(std::ios::failbit);
-            //     return theta;
-            // }
         }
+        // Inline Citation [4] - End
 
         
         bool expect(std::istream & is, char wanted)
