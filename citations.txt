@@ -1,4 +1,5 @@
-[1] Worked With: Theodore Coulson, Nolan Knight, Greg Aiosa, Kyuwon Weon, Amber Handal
+[1] Worked With: Theodore Coulson, Nolan Knight, Greg Aiosa, Kyuwon Weon, Amber Handal, Derek Dietz
 [2] Chatgpt 5.2. Open AI. Used on: Jan 19th, 2026, Transcript: https://chatgpt.com/share/696efaf3-89a4-8008-a17c-a6aebe1f40a9
 [3] Chatgpt 5.2. Open AI. Used on: Jan 19th, 2026, Transcript: https://chatgpt.com/share/696efb26-60f4-8008-8d68-82d9c7f45ea3
 [4] Chatgpt 5.2. Open AI. Used on: Jan 18th, 2026, Transcript: https://chatgpt.com/share/696efb6e-5668-8008-95fe-ba59631a8fd6
+[5] Derek Dietz for header and footer SVG format

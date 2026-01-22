@@ -40,7 +40,7 @@ namespace turtlelib
     
     void Svg::write_header(std::ostream& out)
     {
-        // Citation [Derek Dietz]
+        // Citation [5]
         // Header line
         out << "<svg width=\"8.500000in\" height=\"11.000000in\" "
             << "viewBox=\"0 0 816.000000 1056.000000\" "
