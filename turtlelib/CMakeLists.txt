@@ -22,7 +22,7 @@ find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 # name creates a cmake "target" (in this case the target is called "libname")
 # add_library(libname src/turtlelib.cpp)
 # add_library(libname )
-add_library(turtlelib src/geometry2d.cpp src/se2d.cpp)
+add_library(turtlelib src/geometry2d.cpp src/se2d.cpp src/svg.cpp)
 
 
 # Use target_include_directories so that #include"mylibrary/header.hpp" works
@@ -52,6 +52,7 @@ target_compile_features(turtlelib PUBLIC cxx_std_23)
 # The Name of the executable creates a cmake "target"
 include(CTest)
 add_executable(converter src/converter.cpp)
+add_executable(frame src/frame_main.cpp)
 
 if(BUILD_TESTING)
     find_package(Catch2 3 REQUIRED)
@@ -66,6 +67,22 @@ if(BUILD_TESTING)
     # target_link_libraries(test_svg Catch2::Catch2WithMain turtlelib)
 endif()
 
+find_package(Doxygen)
+# Building documentation should be optional.
+# To build documentation pass -DBUILD_DOCS=ON when generating the build system
+option(BUILD_DOCS "Build the documentation" OFF)
+
+# build the documentation
+if(${DOXYGEN_FOUND} AND ${BUILD_DOCS})
+    # Turn the README.md into the homepage of the doxygen docs
+    set(DOXYGEN_USE_MDFILE_AS_MAINPAGE README.md)
+
+    # Tell Doxygen where to find the documentation
+    doxygen_add_docs(doxygen include/ src/ README.md ALL)
+
+    # The documentation will be in the build/html directory
+    # The main page is build/html/index.html
+endif()
 # Use target_link_libraries to add dependencies to a "target"
 # (e.g., a library or executable)
 # This will automatically add all required library files
@@ -74,6 +91,7 @@ endif()
 # Because libname has PUBLIC cxx_std_23 as a compile feature
 # Name will also be compiled with c++23 as the standard.
 target_link_libraries(converter Eigen3::Eigen turtlelib)
+target_link_libraries(frame Eigen3::Eigen turtlelib)
 
 
 # install the include files by copying the whole include directory

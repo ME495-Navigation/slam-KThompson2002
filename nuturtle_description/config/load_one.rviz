@@ -59,7 +59,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /robot_description
+        Value: /purple/robot_description
       Enabled: true
       Links:
         All Links Enabled: true
@@ -195,7 +195,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 10
+      Distance: 0.7756279110908508
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -232,4 +232,4 @@ Window Geometry:
     collapsed: false
   Width: 1200
   X: 66
-  Y: 60
+  Y: 392
