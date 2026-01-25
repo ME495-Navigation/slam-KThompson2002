@@ -186,8 +186,8 @@ namespace turtlelib
         //     return std::invalid_argument("cannot compute");
         // }
         double cos_theta = dot(v1, v2) / (mag1 * mag2);
-        // if (cos_theta > 1.0) cos_theta = 1.0;
-        // if (cos_theta < -1.0) cos_theta = -1.0;
+        if (cos_theta > 1.0) cos_theta = 1.0;
+        if (cos_theta < -1.0) cos_theta = -1.0;
 
         return std::acos(cos_theta);
     }
