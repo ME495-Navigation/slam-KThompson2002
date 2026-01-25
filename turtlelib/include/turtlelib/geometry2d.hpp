@@ -93,6 +93,38 @@ namespace turtlelib
     /// a parsing error occurs
     std::istream & operator>>(std::istream & is, Vector2D & v);
 
+    /// \brief Vector addition (in-place)
+    Vector2D & operator+=(Vector2D & lhs, const Vector2D & rhs);
+
+    /// \brief Vector addition
+    Vector2D operator+(Vector2D lhs, const Vector2D & rhs);
+
+    /// \brief Vector subtraction (in-place)
+    Vector2D & operator-=(Vector2D & lhs, const Vector2D & rhs);
+
+    /// \brief Vector subtraction
+    Vector2D operator-(Vector2D lhs, const Vector2D & rhs);
+
+    /// \brief Scalar multiplication (in-place)
+    Vector2D & operator*=(Vector2D & v, double scalar);
+
+    /// \brief Vector * scalar
+    Vector2D operator*(Vector2D v, double scalar);
+
+    /// \brief Scalar * vector
+    Vector2D operator*(double scalar, Vector2D v);
+
+    /// \brief Compute the dot product of two vectors
+    /// \param v1 First vector
+    /// \param v2 Second vector
+    /// \returns v1 · v2
+    double dot(const Vector2D & v1, const Vector2D & v2);
+
+    /// \brief Compute the magnitude (length) of a vector
+    /// \param v Vector
+    /// \returns ||v||
+    double magnitude(const Vector2D & v);
+
     /// \brief Return a unit vector in the direction of v
     /// \param in The vector to normalize
     /// \return The normalized vector.

@@ -121,6 +121,61 @@ namespace turtlelib
         }
     }
 
+    Vector2D operator+=(Vector2D & lhs, const Vector2D & rhs)
+    {
+        lhs.x += rhs.x;
+        lhs.y += rhs.y;
+        return lhs;
+    }
+
+    Vector2D operator+(Vector2D lhs, const Vector2D & rhs)
+    {
+        lhs += rhs;
+        return lhs;
+    }
+
+    Vector2D & operator-=(Vector2D & lhs, const Vector2D & rhs)
+    {
+        lhs.x -= rhs.x;
+        lhs.y -= rhs.y;
+        return lhs;
+    }
+
+    Vector2D operator-(Vector2D lhs, const Vector2D & rhs)
+    {
+        lhs -= rhs;
+        return lhs;
+    }
+
+    Vector2D & operator*=(Vector2D & v, double scalar)
+    {
+        v.x *= scalar;
+        v.y *= scalar;
+        return v;
+    }
+
+    Vector2D operator*(Vector2D v, double scalar)
+    {
+        v *= scalar;
+        return v;
+    }
+
+    Vector2D operator*(double scalar, Vector2D v)
+    {
+        v *= scalar;
+        return v;
+    }
+
+    double dot(const Vector2D & v1, const Vector2D & v2)
+    {
+        return v1.x * v2.x + v1.y * v2.y;
+    }
+
+    double magnitude(const Vector2D & v)
+    {
+        return std::sqrt(v.x * v.x + v.y * v.y);
+    }
+
     Vector2D normalize(Vector2D in)
     {
         const double mag = std::sqrt(in.x * in.x + in.y * in.y);
