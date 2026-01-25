@@ -121,7 +121,7 @@ namespace turtlelib
         }
     }
 
-    Vector2D operator+=(Vector2D & lhs, const Vector2D & rhs)
+    Vector2D & operator+=(Vector2D & lhs, const Vector2D & rhs)
     {
         lhs.x += rhs.x;
         lhs.y += rhs.y;
@@ -174,6 +174,22 @@ namespace turtlelib
     double magnitude(const Vector2D & v)
     {
         return std::sqrt(v.x * v.x + v.y * v.y);
+    }
+
+    double angle(const Vector2D & v1, const Vector2D & v2)
+    {
+        double mag1 = magnitude(v1);
+        double mag2 = magnitude(v2);
+
+        // if (mag1 == 0.0 || mag2 == 0.0) 
+        // {
+        //     return std::invalid_argument("cannot compute");
+        // }
+        double cos_theta = dot(v1, v2) / (mag1 * mag2);
+        // if (cos_theta > 1.0) cos_theta = 1.0;
+        // if (cos_theta < -1.0) cos_theta = -1.0;
+
+        return std::acos(cos_theta);
     }
 
     Vector2D normalize(Vector2D in)

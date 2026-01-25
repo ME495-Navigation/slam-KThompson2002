@@ -125,6 +125,12 @@ namespace turtlelib
     /// \returns ||v||
     double magnitude(const Vector2D & v);
 
+    /// @brief Computer the shortest angle between two vectors
+    /// @param v1 First vector
+    /// @param v2 Second vector
+    /// @return shortest angle in radians
+    double angle(const Vector2D & v1, const Vector2D & v2);
+
     /// \brief Return a unit vector in the direction of v
     /// \param in The vector to normalize
     /// \return The normalized vector.
