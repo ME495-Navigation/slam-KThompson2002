@@ -30,6 +30,9 @@ namespace turtlelib
         double y = 0.0;
     };
 
+    Twist2D & operator*=(Twist2D & lhs, double scalar);
+
+    Twist2D operator*(Twist2D lhs, double scalar);
 
     /// \brief read the Twist2D in the format "<w [<unit>], x, y>" or as "w [<unit>] x y"
     /// The "" are not part of the input.
@@ -122,6 +125,10 @@ namespace turtlelib
     /// HINT: This function should be implemented in terms of *=
     Transform2D operator*(Transform2D lhs, const Transform2D & rhs);
 
+    /// \brief Compute the transform corresponding to integrating a constant body twist for 1 time-unit
+    /// \param tw the body-frame twist (omega, x, y)
+    /// \return Transform2D equal to exp(twist_hat * 1)
+    Transform2D integrate_twist(Twist2D tw);
 }
 
 #define FORMAT_COMMA out = std::format_to(out, ", ");

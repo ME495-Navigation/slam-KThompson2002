@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include <cmath>
 #include <sstream>
 #include <string>
 #include <numbers>
@@ -311,5 +312,63 @@ TEST_CASE("std::format formatters for Transform2D and Twist2D")
         Twist2D tw{std::numbers::pi, 0.0, -1.0};
         const std::string s = std::format("{:D.0f}", tw);
         REQUIRE(s == "<180 deg/s, 0, -1>");
+    }
+}
+
+TEST_CASE("Integrate Twist")
+{
+    using turtlelib::Transform2D;
+    using turtlelib::Twist2D;
+    using turtlelib::Vector2D;
+
+    SECTION("Pure Translation")
+    {
+        Twist2D tw;
+        tw.omega = 0.0;
+        tw.x = 1.2;
+        tw.y = -0.7;
+
+        Transform2D T = turtlelib::integrate_twist(tw);
+
+        REQUIRE(T.rotation() == Catch::Approx(0.0));
+
+        Vector2D trans = T.translation();
+        REQUIRE(trans.x == Catch::Approx(1.2));
+        REQUIRE(trans.y == Catch::Approx(-0.7));
+    }
+
+    SECTION("Pure Rotation")
+    {
+        const double pi = std::acos(-1.0);
+
+        Twist2D tw;
+        tw.omega = pi / 2.0;   // 90 deg in radians
+        tw.x = 0.0;
+        tw.y = 0.0;
+
+        Transform2D T = turtlelib::integrate_twist(tw);
+
+        REQUIRE(T.rotation() == Catch::Approx(pi / 2.0));
+
+        Vector2D trans = T.translation();
+        REQUIRE(trans.x == Catch::Approx(0.0));
+        REQUIRE(trans.y == Catch::Approx(0.0));
+    }
+
+    SECTION("simultaneous translation and rotation")
+    {
+        const double pi = std::acos(-1.0);
+        Twist2D tw;
+        tw.omega = pi / 2.0;
+        tw.x = 1.0;
+        tw.y = 0.0;
+
+        Transform2D T = integrate_twist(tw);
+
+        REQUIRE(T.rotation() == Catch::Approx(pi / 2.0));
+
+        Vector2D trans = T.translation();
+        REQUIRE(trans.x == Catch::Approx(2.0 / pi));
+        REQUIRE(trans.y == Catch::Approx(-2.0 / pi));
     }
 }

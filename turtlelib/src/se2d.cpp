@@ -98,6 +98,21 @@ namespace turtlelib
         return is;
     }
 
+    Twist2D & operator*=(Twist2D & lhs, double scalar)
+    {
+        lhs.omega *= scalar;
+        lhs.x *= scalar;
+        lhs.y *= scalar;
+
+        return lhs;
+    }
+
+    Twist2D operator*(Twist2D lhs, double scalar)
+    {
+        lhs *= scalar;
+        return lhs;
+    }
+
     /// \brief Create an identity transformation
     Transform2D::Transform2D() = default;
 
@@ -266,6 +281,26 @@ namespace turtlelib
     {
         lhs *= rhs;
         return lhs;
+    }
+
+    Transform2D integrate_twist(Twist2D tw)
+    {
+        const double w = tw.omega;
+        const double vx = tw.x;
+        const double vy = tw.y;
+
+        if (w == 0)
+        {
+            return Transform2D(Vector2D{vx, vy}, 0.0);
+        }
+
+        const double s = std::sin(w);
+        const double c = std::cos(w);
+
+        const double dx = (vx * s + vy * (1.0 - c)) / w;
+        const double dy = (vy * s + vx * (c - 1.0)) / w;
+
+        return Transform2D(Vector2D{dx, dy}, w);
     }
 }
 
