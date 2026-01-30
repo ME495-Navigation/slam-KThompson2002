@@ -54,5 +54,15 @@ namespace turtlelib
 
     Wheel DiffDrive::inverseKinematics(const Twist2D & Vb) const
     {
+        if (Vb.y > 0.0)
+        {
+            throw std::logic_error("Cannot achieve nonzero body y velocity without slip");
+        }
+        
+        Wheel wdot;
+
+        wdot.right = (Vb.x + Vb.omega * (wheel_track / 2.0)) / wheel_radius;
+        wdot.left = (Vb.x - Vb.omega * (wheel_track / 2.0)) / wheel_radius;
+        return wdot;
     }
 }
