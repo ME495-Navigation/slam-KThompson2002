@@ -5,37 +5,55 @@
 
 namespace turtlelib
 {
+    DiffDrive::DiffDrive(double track, double radius, Transform2D pose_in, Wheel wheels_in)
+    : wheel_track(track),
+    wheel_radius(radius),
+    pose_(pose_in),
+    wheels(wheels_in)
+    {
+        if (wheel_track <= 0.0) {
+            throw std::logic_error("DiffDrive: track must be > 0");
+        }
+        if (wheel_radius <= 0.0) {
+            throw std::logic_error("DiffDrive: radius must be > 0");
+        }
+    }
     // Getters and Setters
     Transform2D DiffDrive::pose() const
     {
-        return T_wb_;
+        return pose_;
     }
 
     void DiffDrive::setPose(const Transform2D & T_wb)
     {
-        T_wb_ = T_wb;
+        pose_ = T_wb;
     }
 
     Wheel DiffDrive::wheelAngles() const
     {
-        return wheels_;
+        return wheels;
     }
 
     void DiffDrive::setWheelAngles(const Wheel & w)
     {
-        wheels_ = w;
+        wheels = w;
     }
 
     double DiffDrive::track() const
     {
-        return wheel_track_;
+        return wheel_track;
     }
 
     double DiffDrive::radius() const
     {
-        return wheel_radius_;
+        return wheel_radius;
     }
 
+    void DiffDrive::reset(const Transform2D & T_wb, const Wheel & w)
+    {
+        pose_ = T_wb;
+        wheels = w;
+    }
 
     Twist2D DiffDrive::forwardKinematics(const Wheel & new_wheels)
     {
@@ -43,14 +61,15 @@ namespace turtlelib
         const double dphi_l = new_wheels.left  - wheels.left;
 
         Twist2D twist;
-        twist.omega = wheel_radius * (dphi_r + dphi_l) / wheel_track;
+        twist.omega = wheel_radius * (dphi_r - dphi_l) / wheel_track;
         twist.x = wheel_radius * (dphi_r + dphi_l) / 2.0;
         twist.y = 0.0;
 
         const Transform2D twist_prime = integrate_twist(twist);
-        pose = pose * twist_prime;
+        pose_ = pose_ * twist_prime;
         wheels = new_wheels;
         return twist;
+    }
 
     Wheel DiffDrive::inverseKinematics(const Twist2D & Vb) const
     {
