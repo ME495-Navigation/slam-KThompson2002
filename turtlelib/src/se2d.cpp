@@ -298,7 +298,7 @@ namespace turtlelib
         const double c = std::cos(w);
 
         const double dx = (vx * s + vy * (1.0 - c)) / w;
-        const double dy = (vy * s + vx * (c - 1.0)) / w;
+        const double dy = (vy * s - vx * (1.0 - c)) / w;
 
         return Transform2D(Vector2D{dx, dy}, w);
     }
