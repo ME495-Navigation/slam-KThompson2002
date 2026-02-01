@@ -155,10 +155,17 @@ TEST_CASE("Robot follows the arc of a circle")
     }
 }
 
-// TEST_CASE("Impossible to follow twist")
-// {
-//     SECTION("Inverse Kinematics")
-//     {
-        
-//     }
-// }
+TEST_CASE("Impossible to follow twist")
+{
+    SECTION("Inverse Kinematics")
+    {
+        DiffDrive diff(track, radius);
+
+        Twist2D impossible;
+        impossible.omega = 0.0;
+        impossible.x = 0.1;
+        impossible.y = 0.05;
+
+        REQUIRE_THROWS_AS(diff.inverseKinematics(impossible), std::logic_error);
+    }
+}
