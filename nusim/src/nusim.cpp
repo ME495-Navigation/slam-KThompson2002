@@ -78,6 +78,7 @@ public:
   nusimulator()
   : Node("nusimulator")
   {
+      // superfluous this
     this->declare_parameter("rate", 100);
     this->declare_parameter("x0", 0.0);
     this->declare_parameter("y0", 0.0);

@@ -156,6 +156,7 @@ public:
     template<class FormatContext>
     auto format(const turtlelib::Vector2D & v, FormatContext & ctx) const
     {
+        // format_to can make this function simpler
         auto out = ctx.out();
 
         *out++ = CharT('[');

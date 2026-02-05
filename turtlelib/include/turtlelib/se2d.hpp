@@ -124,6 +124,7 @@ namespace turtlelib
 
 }
 
+// don't use macros in C++
 #define FORMAT_COMMA out = std::format_to(out, ", ");
 
 /// \brief print the Twist2D as "<w [<unit>], x, y>"

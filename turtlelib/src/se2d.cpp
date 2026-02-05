@@ -15,6 +15,7 @@ namespace turtlelib
         /// \param theta The input angle to be converted
         /// \return The final angle to be saved
         // Inline Citation [4] - Start
+        // quite overly complicated for what it does
         static double read_angle_with_optional_unit(std::istream& is, double theta)
         {
             is >> std::ws;  // skip whitespace (but not punctuation)
@@ -66,11 +67,12 @@ namespace turtlelib
     /// \returns the istream is with the twist characters removed
     std::istream & operator>>(std::istream & is, Twist2D & tw)
     {
-        Twist2D tmp = tw;
+        Twist2D tmp = tw; // auto
         is >> std::ws;
 
         if (is.peek() == '<')
         {
+            // always use {} with if statements
             if (!expect(is, '<')) return is;
 
             if (!(is >> tmp.omega)) return is;
@@ -123,12 +125,12 @@ namespace turtlelib
     /// \return a point in the new coordinate system
     Point2D Transform2D::operator()(Point2D p) const
     {
-        const double c = std::cos(theta_);
+        const double c = std::cos(theta_); // auto
         const double s = std::sin(theta_);
 
         const double x = c * p.x - s * p.y + trans_.x;
         const double y = s * p.x + c * p.y + trans_.y;
-        return Point2D{x, y};
+        return Point2D{x, y}; // Point2D is unnecessary
     }
 
     /// \brief apply a transformation to a 2D Vector
@@ -141,7 +143,7 @@ namespace turtlelib
 
         const double x = c * v.x - s * v.y;
         const double y = s * v.x + c * v.y;
-        return Vector2D{x, y};
+        return Vector2D{x, y}; // see Poin2D function
     }
 
     /// \brief apply a transformation to a Twist2D (e.g. using the adjoint)

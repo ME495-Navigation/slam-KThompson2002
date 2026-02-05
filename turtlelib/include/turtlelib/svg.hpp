@@ -24,6 +24,10 @@ namespace turtlelib
         Vector2D vec_to_svg(const Vector2D& v) const;
         
         /// \brief Write header text for SVG
+        // exposing this as the api requires the user to know that they should
+        // write a header, write a footer, then call the drawing functions
+        // so it's not a great abstraction and the class is not
+        // maintaining the invariants of an svg
         void write_header(std::ostream& out);
 
         /// \brief Write footer text for SVG

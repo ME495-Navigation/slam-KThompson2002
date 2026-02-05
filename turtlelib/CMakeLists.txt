@@ -13,6 +13,7 @@ project(turtlelib)
 # That is defined to reference the library
 # here: we find the eigen library as per the instruction
 # https://eigen.tuxfamily.org/dox/TopicCMakeGuide.html
+# Not using eigen
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
 
@@ -90,6 +91,7 @@ endif()
 # and paths to th locations of header files.
 # Because libname has PUBLIC cxx_std_23 as a compile feature
 # Name will also be compiled with c++23 as the standard.
+# Why is this being linked against Eigen, when you aren't using that library?
 target_link_libraries(converter Eigen3::Eigen turtlelib)
 target_link_libraries(frame Eigen3::Eigen turtlelib)
 

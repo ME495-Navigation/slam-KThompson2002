@@ -20,6 +20,7 @@ namespace turtlelib
         // constexpr means that the function can be computed at compile time
         // if given compile-time constants as input, and therefore
         // it's definition must be visible in any compilation unit that uses it.
+        // this extra ? : is unnecessary to return a bool of the condition
         return (d1 > d2) ? ((d1 - d2) < epsilon) : ((d2 - d1) < epsilon);
     }
 
@@ -50,7 +51,7 @@ namespace turtlelib
     constexpr double normalize_angle(double rad)
     {
         // NOTE: You will receive partial credit only if this function uses loops.
-        const double two_pi = 2.0 * std::numbers::pi;
+        const double two_pi = 2.0 * std::numbers::pi; // auto
         rad = std::remainder(rad, two_pi); 
         if (almost_equal(rad, -std::numbers::pi, 1e-12)) {
             rad = std::numbers::pi;

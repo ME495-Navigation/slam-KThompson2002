@@ -71,7 +71,7 @@ namespace turtlelib
 
     std::istream & operator>>(std::istream & is, Vector2D & v)
     {
-        Vector2D tmp = v;
+        Vector2D tmp = v; // auto
         is >> std::ws;
 
         const int next = is.peek();

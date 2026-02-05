@@ -95,6 +95,7 @@ namespace turtlelib
 
     void Svg::coordinateFrame(std::ostream& out, Transform2D& tf, const std::string& name)
     {
+        // auto
         // Frame origin in world coordinates
         Vector2D trans = tf.translation();
         Point2D tail{trans.x, trans.y};
