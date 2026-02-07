@@ -1,0 +1,10 @@
+repositories:
+  slam-KThompson2002:
+    type: git
+    url: git@github.com:ME495-Navigation/slam-KThompson2002.git
+    version: main
+
+  nuturtlebot_msgs:
+    type: git
+    url: git@github.com:NU-MSR/nuturtlebot_msgs.git
+    version: main

@@ -10,6 +10,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nuturtlebot_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(turtlelib REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -18,6 +20,9 @@ add_executable(turtle_control src/turtle_control.cpp)
 target_link_libraries(turtle_control PUBLIC
   ${geometry_msgs_TARGETS}
   ${nuturtlebot_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  ${turtlelib_TARGETS}
+  turtlelib::turtlelib
   rclcpp::rclcpp
 )
 
