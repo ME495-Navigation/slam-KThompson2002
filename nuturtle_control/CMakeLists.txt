@@ -17,6 +17,7 @@ find_package(turtlelib REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 add_executable(turtle_control src/turtle_control.cpp)
+add_executable(odometry src/odometry.cpp)
 target_link_libraries(turtle_control PUBLIC
   ${geometry_msgs_TARGETS}
   ${nuturtlebot_msgs_TARGETS}
@@ -40,6 +41,7 @@ endif()
 
 install(TARGETS
   turtle_control
+  odometry
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
