@@ -11,12 +11,14 @@
 #include "tf2_ros/transform_broadcaster.h"
 
 #include "turtlelib/diff_drive.hpp"
+#include "nuturtle_control_interfaces/srv/initial_pose.hpp"
 
 class Odometry : public rclcpp::Node
 {
 public:
-  OdometryNode()
-  : Node("odometry")
+  Odometry()
+  : Node("odometry"),
+  diff(1.0, 1.0)
   {
     this->declare_parameter("body_id", "base_footprint");
     this->declare_parameter("odom_id", "odom");
@@ -40,13 +42,19 @@ public:
     track_width = this->get_parameter("track_width").as_double();
     wheel_radius = this->get_parameter("wheel_radius").as_double();
 
-    diff = turtlelib::DiffDrive(track, radius);
+    diff = turtlelib::DiffDrive(track_width, wheel_radius);
     odom_pub = this->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
     tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     joint_sub = this->create_subscription<sensor_msgs::msg::JointState>(
       "joint_states", 10,
-      std::bind(&OdometryNode::joint_callback, this, std::placeholders::_1)
+      std::bind(&Odometry::joint_callback, this, std::placeholders::_1)
+    );
+
+    init_pose = this->create_service<nuturtle_control_interfaces::srv::InitialPose>(
+      "initial_pose",
+      std::bind(&Odometry::initial_pose_callback, this, 
+                std::placeholders::_1, std::placeholders::_2)
     );
 
   }
@@ -54,6 +62,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster;
+  rclcpp::Service<nuturtle_control_interfaces::srv::InitialPose>::SharedPtr init_pose;
 
   // Parameters
   std::string body_id;
@@ -67,9 +76,88 @@ private:
 
   void joint_callback(const sensor_msgs::msg::JointState & js)
   {
+    turtlelib::Wheel wheels;
+    for (size_t i = 0; i < js.name.size(); ++i)
+    {
+      if (js.name[i] == wheel_left) 
+      {
+        wheels.left = js.position[i];
+      }
+      else if (js.name[i] == wheel_right)
+      {
+        wheels.right = js.position[i];
+      }
+    }
+
+    turtlelib::Twist2D Vb = diff.forwardKinematics(wheels);
     
+    publish_odom_and_tf(js.header.stamp, Vb);
   }
-}
+
+  void initial_pose_callback(
+  const std::shared_ptr<nuturtle_control_interfaces::srv::InitialPose::Request> req,
+  std::shared_ptr<nuturtle_control_interfaces::srv::InitialPose::Response> res)
+  {
+    turtlelib::Transform2D T0(turtlelib::Vector2D{req->x, req->y}, req->theta);
+    diff.setPose(T0);
+    turtlelib::Wheel wheels;
+    wheels.left = 0.0;
+    wheels.right = 0.0;
+    diff.setWheelAngles(wheels);
+
+    res->success = true;
+  }
+
+  void publish_odom_and_tf(const builtin_interfaces::msg::Time & stamp,
+                           const turtlelib::Twist2D & Vb)
+  {
+    const turtlelib::Transform2D T = diff.pose();  // adjust if your accessor name differs
+    const turtlelib::Vector2D p = T.translation();
+    const double yaw = T.rotation();
+
+    // Create Odometry Message
+    nav_msgs::msg::Odometry odom;
+    odom.header.stamp = stamp;
+    odom.header.frame_id = odom_id;
+    odom.child_frame_id = body_id;
+
+    odom.pose.pose.position.x = p.x;
+    odom.pose.pose.position.y = p.y;
+    odom.pose.pose.position.z = 0.0;
+
+    tf2::Quaternion q;
+    q.setRPY(0.0, 0.0, yaw);
+    odom.pose.pose.orientation.x = q.x();
+    odom.pose.pose.orientation.y = q.y();
+    odom.pose.pose.orientation.z = q.z();
+    odom.pose.pose.orientation.w = q.w();
+
+    odom.twist.twist.linear.x = Vb.x;
+    odom.twist.twist.linear.y = Vb.y;
+    odom.twist.twist.linear.z = 0.0;
+    odom.twist.twist.angular.x = 0.0;
+    odom.twist.twist.angular.y = 0.0;
+    odom.twist.twist.angular.z = Vb.omega;
+
+    odom_pub->publish(odom);
+
+    // Create Transform message
+    geometry_msgs::msg::TransformStamped tf;
+    tf.header.stamp = stamp;
+    tf.header.frame_id = odom_id;
+    tf.child_frame_id = body_id;
+
+    tf.transform.translation.x = p.x;
+    tf.transform.translation.y = p.y;
+    tf.transform.translation.z = 0.0;
+    tf.transform.rotation.x = q.x();
+    tf.transform.rotation.y = q.y();
+    tf.transform.rotation.z = q.z();
+    tf.transform.rotation.w = q.w();
+
+    tf_broadcaster->sendTransform(tf);
+  }
+};
 
 int main(int argc, char ** argv)
 {

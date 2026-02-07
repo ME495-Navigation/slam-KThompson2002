@@ -1,0 +1,6 @@
+# Reset the odometry estimate to this pose
+float64 x
+float64 y
+float64 theta
+---
+bool success
