@@ -23,6 +23,9 @@
 #include "nuturtlebot_msgs/msg/wheel_commands.hpp"
 #include "turtlelib/diff_drive.hpp"
 
+#include <algorithm>
+#include <cmath>
+
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
@@ -31,7 +34,7 @@ class turtle_control : public rclcpp::Node
 public:
   turtle_control()
   : Node("turtle_control"),
-  diff(0.0, 0.0)
+  diff(1.0, 1.0)
   {
     this->declare_parameter<double>("wheel_radius", rclcpp::PARAMETER_NOT_SET);
     this->declare_parameter<double>("track_width",  rclcpp::PARAMETER_NOT_SET);
@@ -65,7 +68,7 @@ public:
     joint_states = this->create_publisher<sensor_msgs::msg::JointState>(
         "joint_states",
         10
-    )
+    );
 
   };
 private:
@@ -144,9 +147,10 @@ private:
 
     int left_mcu  = static_cast<int>(std::round(wdot.left  / motor_cmd_per_rad_sec));
     int right_mcu = static_cast<int>(std::round(wdot.right /  motor_cmd_per_rad_sec));
+    int cmd_max = static_cast<int>(motor_cmd_max);
 
-    left_mcu  = std::clamp(left_mcu,  -motor_cmd_max, motor_cmd_max);
-    right_mcu = std::clamp(right_mcu, -motor_cmd_max, motor_cmd_max);
+    left_mcu  = std::clamp(left_mcu,  -cmd_max, cmd_max);
+    right_mcu = std::clamp(right_mcu, -cmd_max, cmd_max);
 
     auto cmd = nuturtlebot_msgs::msg::WheelCommands();
     cmd.left_velocity = left_mcu;
@@ -156,16 +160,44 @@ private:
 
   void sensor_callback(const nuturtlebot_msgs::msg::SensorData & msgs)
   {
-    turtlelib::Wheel wdot{0.0, 0.0};
-    wdot.left = msgs.left_encoder;
-    wdot.right = msgs.right_encoder;
+    rclcpp::Time stamp(msgs.stamp.sec, msgs.stamp.nanosec, RCL_ROS_TIME);
+    double left_pos  = static_cast<double>(msgs.left_encoder)  / encoder_ticks_per_rad;
+    double right_pos = static_cast<double>(msgs.right_encoder) / encoder_ticks_per_rad;
 
-    turtlelib::Twist2D twist = diff.forwardKinematics();
+    double left_vel = 0.0;
+    double right_vel = 0.0;
+
+    if (have_prev_) 
+    {
+      rclcpp::Time prev_stamp(prev_sensor_.stamp.sec,
+                              prev_sensor_.stamp.nanosec,
+                              RCL_ROS_TIME);
+
+      double dt = (stamp - prev_stamp).seconds();
+
+      int32_t d_left_ticks  = msgs.left_encoder  - prev_sensor_.left_encoder;
+      int32_t d_right_ticks = msgs.right_encoder - prev_sensor_.right_encoder;
+
+      left_vel  = static_cast<double>(d_left_ticks)  / (encoder_ticks_per_rad * dt);
+      right_vel = static_cast<double>(d_right_ticks) / (encoder_ticks_per_rad * dt);
+    }
+
+    // turtlelib::Wheel wheels_rad;
+    // wheels_rad.left  = msgs.left_encoder  / encoder_ticks_per_rad;
+    // wheels_rad.right = msgs.right_encoder / encoder_ticks_per_rad;
+
+    // turtlelib::Twist2D body_twist = diff.forwardKinematics(wheels_rad);
+
     auto cmd = sensor_msgs::msg::JointState();
-    cmd.name = ["wheel_left_joint", "wheel_right_joint"]
-    cmd.position = [wdot.left, wdot.right]
-    cmd.velocity = ;
+    cmd.header.stamp = stamp;
+    cmd.name = {"wheel_left_joint", "wheel_right_joint"};
+    cmd.position = {left_pos, right_pos};
+    cmd.velocity = {left_vel, right_vel};
     joint_states->publish(cmd);
+
+    prev_sensor_ = msgs;
+    have_prev_ = true;
+  }
 };
 
 int main(int argc, char * argv[])
