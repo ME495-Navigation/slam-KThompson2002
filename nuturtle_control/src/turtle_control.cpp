@@ -35,6 +35,10 @@ public:
   {
     this->declare_parameter<double>("wheel_radius", rclcpp::PARAMETER_NOT_SET);
     this->declare_parameter<double>("track_width",  rclcpp::PARAMETER_NOT_SET);
+    this->declare_parameter<double>("motor_cmd_max", rclcpp::PARAMETER_NOT_SET);
+    this->declare_parameter<double>("motor_cmd_per_rad_sec", rclcpp::PARAMETER_NOT_SET);
+    this->declare_parameter<double>("encoder_ticks_per_rad", rclcpp::PARAMETER_NOT_SET);
+
     if (!load_required_params()) {
       rclcpp::shutdown();
       return;
@@ -70,11 +74,19 @@ private:
   rclcpp::Publisher<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_states;
 
+  // diff_params;
   double wheel_radius;
   double track_width;
+  double motor_cmd_max;
+  double motor_cmd_per_rad_sec;
+  double encoder_ticks_per_rad;
+
   turtlelib::DiffDrive diff;
   double v;
   double w;
+
+  nuturtlebot_msgs::msg::SensorData prev_sensor_;
+  bool have_prev_ = false;
 
 
   bool load_required_params()
@@ -86,7 +98,6 @@ private:
       return false;
     }
      wheel_radius = pr.as_double();
-    
 
     auto pt = this->get_parameter("track_width");
     if (pt.get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET) {
@@ -95,6 +106,30 @@ private:
       return false;
     }
     track_width = pt.as_double();
+
+    auto pm = this->get_parameter("motor_cmd_max");
+    if (pm.get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET) {
+      RCLCPP_ERROR_STREAM(this->get_logger(),
+        "Missing required parameter: motor_cmd_max");
+      return false;
+    }
+    motor_cmd_max = pm.as_double();
+
+    auto ps = this->get_parameter("motor_cmd_per_rad_sec");
+    if (ps.get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET) {
+      RCLCPP_ERROR_STREAM(this->get_logger(),
+        "Missing required parameter: motor_cmd_per_rad_sec");
+      return false;
+    }
+    motor_cmd_per_rad_sec = ps.as_double();
+
+    auto pe = this->get_parameter("encoder_ticks_per_rad");
+    if (pe.get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET) {
+      RCLCPP_ERROR_STREAM(this->get_logger(),
+        "Missing required parameter: encoder_ticks_per_rad");
+      return false;
+    }
+    encoder_ticks_per_rad = pe.as_double();
     return true;
   }
 
@@ -106,14 +141,12 @@ private:
     twist.y = 0.0;
 
     turtlelib::Wheel wdot = diff.inverseKinematics(twist);
-    const double rad_per_mcu = 0.024;
-    const int max_mcu = 265;
 
-    int left_mcu  = static_cast<int>(std::round(wdot.left  / rad_per_mcu));
-    int right_mcu = static_cast<int>(std::round(wdot.right / rad_per_mcu));
+    int left_mcu  = static_cast<int>(std::round(wdot.left  / motor_cmd_per_rad_sec));
+    int right_mcu = static_cast<int>(std::round(wdot.right /  motor_cmd_per_rad_sec));
 
-    left_mcu  = std::clamp(left_mcu,  -max_mcu, max_mcu);
-    right_mcu = std::clamp(right_mcu, -max_mcu, max_mcu);
+    left_mcu  = std::clamp(left_mcu,  -motor_cmd_max, motor_cmd_max);
+    right_mcu = std::clamp(right_mcu, -motor_cmd_max, motor_cmd_max);
 
     auto cmd = nuturtlebot_msgs::msg::WheelCommands();
     cmd.left_velocity = left_mcu;
@@ -129,9 +162,9 @@ private:
 
     turtlelib::Twist2D twist = diff.forwardKinematics();
     auto cmd = sensor_msgs::msg::JointState();
-    // cmd.name = ["wheel_left_joint", "wheel_right_joint"]
-    // cmd.position = [wdot.left, wdot.right]
-    // cmd.velocity = ;
+    cmd.name = ["wheel_left_joint", "wheel_right_joint"]
+    cmd.position = [wdot.left, wdot.right]
+    cmd.velocity = ;
     joint_states->publish(cmd);
 };
 
