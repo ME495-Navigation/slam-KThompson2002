@@ -17,6 +17,10 @@
   <exec_depend>rclcpp</exec_depend>
   <exec_depend>ros2launch</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>tf2</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
   <exec_depend>nuturtlebot_msgs</exec_depend>
   
   <export>

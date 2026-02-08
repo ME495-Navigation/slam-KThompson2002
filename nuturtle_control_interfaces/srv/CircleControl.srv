@@ -1,0 +1,12 @@
+# Desired circular motion command
+
+# Angular velocity of the robot (rad/s)
+# Positive = counter-clockwise, negative = clockwise
+float64 velocity
+
+# Radius of the circular arc (meters)
+float64 radius
+
+---
+# Service result
+bool success

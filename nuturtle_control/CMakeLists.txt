@@ -15,6 +15,7 @@ find_package(turtlelib REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(nuturtle_control_interfaces REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -22,6 +23,7 @@ find_package(nuturtle_control_interfaces REQUIRED)
 
 add_executable(turtle_control src/turtle_control.cpp)
 add_executable(odometry src/odometry.cpp)
+add_executable(circle src/circle.cpp)
 target_link_libraries(turtle_control PUBLIC
   ${geometry_msgs_TARGETS}
   ${nuturtlebot_msgs_TARGETS}
@@ -41,6 +43,12 @@ target_link_libraries(odometry PUBLIC
   turtlelib::turtlelib
   rclcpp::rclcpp
 )
+target_link_libraries(circle PUBLIC
+  ${geometry_msgs_TARGETS}
+  ${std_srvs_TARGETS}
+  ${nuturtle_control_interfaces_TARGETS}
+  rclcpp::rclcpp
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -57,6 +65,7 @@ endif()
 install(TARGETS
   turtle_control
   odometry
+  circle
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
