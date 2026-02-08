@@ -21,6 +21,11 @@ public:
     this->declare_parameter("frequency", 100.0);
     freq = this->get_parameter("frequency").as_double();
 
+    cmd_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
+        "cmd_vel",
+        10
+    );
+
     control_srv_ = this->create_service<nuturtle_control_interfaces::srv::CircleControl>(
       "control",
       std::bind(&Circle::control_callback, this, std::placeholders::_1, std::placeholders::_2)

@@ -84,7 +84,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.57 0 0"/>
       <geometry>
-        <mesh filename="package://nuturtle_description/mesh/wheels/left_tire.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://nuturtle_description/mesh/left_tire.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>
@@ -114,7 +114,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.57 0 0"/>
       <geometry>
-        <mesh filename="package://nuturtle_description/mesh/wheels/right_tire.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://nuturtle_description/mesh/right_tire.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="dark"/>
     </visual>

@@ -49,6 +49,7 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "nuturtlebot_msgs/msg/sensor_data.hpp"
 #include "nuturtlebot_msgs/msg/wheel_commands.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
 #include "turtlelib/diff_drive.hpp"
 
 using namespace std::chrono_literals;
@@ -149,6 +150,11 @@ public:
         "red/sensor_data",
         10
     );
+
+    joint_states = this->create_publisher<sensor_msgs::msg::JointState>(
+        "red/joint_states",
+        10
+    );
   }
 
 private:
@@ -161,6 +167,7 @@ private:
   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data;
   std_msgs::msg::UInt64 timestep_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_states;
 
   int rate;
   double x_;
@@ -319,6 +326,14 @@ private:
     x_ = p.x;
     y_ = p.y;
     theta_ = T.rotation();
+
+    auto cmd = sensor_msgs::msg::JointState();
+    cmd.header.stamp = this->get_clock()->now();
+    cmd.name = {"wheel_left_joint", "wheel_right_joint"};
+    cmd.position = {wheel_pos.left, wheel_pos.right};
+    cmd.velocity = {left_wheel_vel, right_wheel_vel};
+    joint_states->publish(cmd);
+
 
     geometry_msgs::msg::TransformStamped t;
 

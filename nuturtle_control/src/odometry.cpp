@@ -91,6 +91,7 @@ private:
         wheels.right = js.position[i];
       }
     }
+    // RCLCPP_INFO(this->get_logger(), "wheels left: %.3f, wheels right:%.3f", wheels.left, wheels.right);
 
     turtlelib::Twist2D Vb = diff.forwardKinematics(wheels);
     
@@ -127,6 +128,7 @@ private:
     odom.pose.pose.position.x = p.x;
     odom.pose.pose.position.y = p.y;
     odom.pose.pose.position.z = 0.0;
+    // RCLCPP_INFO(this->get_logger(), "twist pose: x=%.3f, y=%.3f", p.x, p.y);
 
     tf2::Quaternion q;
     q.setRPY(0.0, 0.0, yaw);

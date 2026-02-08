@@ -142,15 +142,17 @@ private:
     twist.x = msg.linear.x;
     twist.omega = msg.angular.z;
     twist.y = 0.0;
-
+    // RCLCPP_INFO(this->get_logger(), "twist.x: vel=%.3f rad/s", twist.x);
     turtlelib::Wheel wdot = diff.inverseKinematics(twist);
+    // RCLCPP_INFO(this->get_logger(), "wdot.left: vel=%.3f rad/s", wdot.left);
 
-    int left_mcu  = static_cast<int>(std::round(wdot.left  / motor_cmd_per_rad_sec));
-    int right_mcu = static_cast<int>(std::round(wdot.right /  motor_cmd_per_rad_sec));
+    int left_mcu  = static_cast<int>(std::round(wdot.left / motor_cmd_per_rad_sec));
+    int right_mcu = static_cast<int>(std::round(wdot.right / motor_cmd_per_rad_sec));
     int cmd_max = static_cast<int>(motor_cmd_max);
-
+    // RCLCPP_INFO(this->get_logger(), "Left_mcu before clamp: vel=%.3d rad/s", left_mcu);
     left_mcu  = std::clamp(left_mcu,  -cmd_max, cmd_max);
     right_mcu = std::clamp(right_mcu, -cmd_max, cmd_max);
+    // RCLCPP_INFO(this->get_logger(), "Left_mcu: vel=%.3d rad/s", left_mcu);
 
     auto cmd = nuturtlebot_msgs::msg::WheelCommands();
     cmd.left_velocity = left_mcu;
