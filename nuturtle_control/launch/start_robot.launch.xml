@@ -1,0 +1,57 @@
+<launch>
+    <arg name="cmd_src" default="circle"/>
+    <arg name="robot" default="nusim"/>
+    <arg name="use_rviz" default="true"/>
+
+    <node pkg="nuturtle_control" exec="circle" if="$(eval '\'$(var cmd_src)\'== \'circle\'')"/>
+    <node pkg="turtlebot3_teleop" exec="teleop_twist_keyboard" if="$(eval '\'$(var cmd_src)\'== \'teleop\'')"/>
+
+    <node pkg="tf2_ros" exec="static_transform_publisher" name="world_to_odom"
+        args="0 0 0 0 0 0 nusim/world odom"/>
+
+    <group if="$(eval '\'$(var robot)\'== \'nusim\'')">
+        <include file="$(find-pkg-share nusim/launch/nusim.launch.xml">
+            <arg name="use_rviz" value="$(var use_rviz)">
+            <arg name="color" value="blue"/>
+        </include>
+
+        <node pkg="nuturtle_control" exec="turtle_control" namespace="blue">
+            <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+        </node>
+
+        <node pkg="nuturtle_control" exec="odometry" namespace="blue">
+            <param name="body_id" value="blue/base_footprint"/>
+            <param name="odom_id" value="odom"/>
+            <param name="wheel_left" value="wheel_left_joint"/>
+            <param name="wheel_right" value="wheel_right_joint"/>
+
+            <param name="track" value="0.16"/>
+            <param name="radius" value="0.033"/>
+        </node>
+
+        <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.xml">
+            <arg name="use_jsp" value="true"/>
+            <arg name="use_rviz" value="false"/>
+            <arg name="color" value="blue"/>
+        </include>
+    </group>
+
+    <group if="$(eval '\'$(var robot)\'== \'localhost\'')">
+        <node pkg="nuturtle_control" exec="turtle_control" namespace="blue">
+            <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+        </node>
+
+        <node pkg="nuturtle_control" exec="odometry" name="odometry" namespace="blue" output="screen">
+            <param name="body_id" value="blue/base_footprint"/>
+            <param name="odom_id" value="odom"/>
+            <param name="wheel_left" value="wheel_left_joint"/>
+            <param name="wheel_right" value="wheel_right_joint"/>
+            <param name="track" value="0.16"/>
+            <param name="radius" value="0.033"/>
+        </node>
+
+        <node pkg="numsr_turtlebot" exec="numsr_turtlebot"/>
+    </group>
+
+    
+</launch>
