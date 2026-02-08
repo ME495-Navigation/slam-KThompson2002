@@ -12,7 +12,7 @@
     <group if="$(eval '\'$(var robot)\'== \'nusim\'')">
         <include file="$(find-pkg-share nusim/launch/nusim.launch.xml">
             <arg name="use_rviz" value="$(var use_rviz)">
-            <arg name="color" value="blue"/>
+            <arg name="color" value="red"/>
         </include>
 
         <node pkg="nuturtle_control" exec="turtle_control" namespace="blue">

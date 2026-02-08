@@ -13,6 +13,8 @@ find_package(std_srvs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(nuturtlebot_msgs REQUIRED)
+find_package(turtlelib REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -24,6 +26,9 @@ target_link_libraries(nusimulator PUBLIC
   ${tf2_TARGETS}
   ${tf2_ros_TARGETS}
   ${visualization_msgs_TARGETS}
+  ${nuturtlebot_msgs_TARGETS}
+  ${turtlelib_TARGETS}
+  turtlelib::turtlelib
   rclcpp::rclcpp
 )
 # target_link_libraries(nusim PUBLIC rclcpp::rclcpp ${std_msgs_TARGETS})

@@ -37,6 +37,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <cmath>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -46,8 +47,13 @@
 #include "tf2_ros/transform_broadcaster.h"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
+#include "nuturtlebot_msgs/msg/sensor_data.hpp"
+#include "nuturtlebot_msgs/msg/wheel_commands.hpp"
+#include "turtlelib/diff_drive.hpp"
 
 using namespace std::chrono_literals;
+using std::placeholders::_1;
+using std::placeholders::_2;
 
 /**
  * \class nusimulator
@@ -84,19 +90,29 @@ public:
     this->declare_parameter("theta0", 0.0);
     this->declare_parameter("arena_x_length", 7.0);
     this->declare_parameter("arena_y_length", 7.0);
+    this->declare_parameter("track_width", 0.16);
+    this->declare_parameter("wheel_radius", 0.033);
+    this->declare_parameter("encoder_ticks_per_rad", 651.9);
+    this->declare_parameter("motor_cmd_per_rad_sec", 0.024);
     this->declare_parameter<std::vector<double>>("obstacles.x", std::vector<double>{});
     this->declare_parameter<std::vector<double>>("obstacles.y", std::vector<double>{});
     this->declare_parameter<double>("obstacles.r", 0.0);
+    
 
-    const int rate = this->get_parameter("rate").as_int();
-    x0_ = this->get_parameter("x0").as_double();
-    y0_ = this->get_parameter("y0").as_double();
-    theta0_ = this->get_parameter("theta0").as_double();
+    rate = this->get_parameter("rate").as_int();
+    x_ = this->get_parameter("x0").as_double();
+    y_ = this->get_parameter("y0").as_double();
+    theta_ = this->get_parameter("theta0").as_double();
     arena_x_length = this->get_parameter("arena_x_length").as_double();
     arena_y_length = this->get_parameter("arena_y_length").as_double();
+    track_width = this->get_parameter("track_width").as_double();
+    wheel_radius = this->get_parameter("wheel_radius").as_double();
+    encoder_ticks_per_rad = this->get_parameter("encoder_ticks_per_rad").as_double();
+    motor_cmd_per_rad_sec = this->get_parameter("motor_cmd_per_rad_sec").as_double();
     xs = this->get_parameter("obstacles.x").as_double_array();
     ys = this->get_parameter("obstacles.y").as_double_array();
     r = this->get_parameter("obstacles.r").as_double();
+    
 
     if (xs.size() != ys.size()) {
       RCLCPP_INFO(this->get_logger(), "arrays of different length");
@@ -105,6 +121,8 @@ public:
 
     tf_broadcaster_ =
       std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+    diff = std::make_unique<turtlelib::DiffDrive>(track_width, wheel_radius);
+    diff->setPose(turtlelib::Transform2D(turtlelib::Vector2D{x_, y_}, theta_));
 
     publisher_ = this->create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_walls = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/real_walls", 10);
@@ -120,6 +138,17 @@ public:
       "~/reset",
       std::bind(&nusimulator::reset_callback, this, std::placeholders::_1, std::placeholders::_2)
     );
+
+    wheel_cmd = this->create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
+        "red/wheel_cmd",
+        10,
+        std::bind(&nusimulator::wheel_callback, this, _1)
+    );
+
+    sensor_data = this->create_publisher<nuturtlebot_msgs::msg::SensorData>(
+        "red/sensor_data",
+        10
+    );
   }
 
 private:
@@ -128,17 +157,28 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_walls;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_obs;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
+  rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd;
+  rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data;
   std_msgs::msg::UInt64 timestep_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
-  double x0_;
-  double y0_;
-  double theta0_;
+  int rate;
+  double x_;
+  double y_;
+  double theta_;
   double arena_x_length;
   double arena_y_length;
   std::vector<double> xs;
   std::vector<double> ys;
   double r;
+  turtlelib::Wheel wheel_pos{0.0, 0.0};
+  double left_wheel_vel = 0.0;
+  double right_wheel_vel = 0.0;
+  std::unique_ptr<turtlelib::DiffDrive> diff;
+  double track_width;
+  double wheel_radius;
+  double encoder_ticks_per_rad;
+  double motor_cmd_per_rad_sec;
 
   /**
    * \brief Create a cylindrical RViz marker representing an obstacle.
@@ -239,6 +279,14 @@ private:
     return m;
   }
 
+  void wheel_callback(const nuturtlebot_msgs::msg::WheelCommands & msgs)
+  {
+    constexpr double motor_cmd_per_rad_sec = 0.024;
+
+    left_wheel_vel = static_cast<double>(msgs.left_velocity)  * motor_cmd_per_rad_sec;
+    right_wheel_vel = static_cast<double>(msgs.right_velocity) * motor_cmd_per_rad_sec;
+  }
+
   /**
    * \brief Periodic timer callback that advances simulation outputs.
    *
@@ -250,8 +298,27 @@ private:
    */
   void timer_callback()
   {
+    const double dt = 1.0 / rate;
     timestep_.data++;
     this->publisher_->publish(timestep_);
+
+    wheel_pos.left  += left_wheel_vel  * dt;
+    wheel_pos.right += right_wheel_vel * dt;
+
+    nuturtlebot_msgs::msg::SensorData msg;
+    msg.stamp = this->get_clock()->now();
+
+    msg.left_encoder  = static_cast<int32_t>(std::round(wheel_pos.left  * encoder_ticks_per_rad));
+    msg.right_encoder = static_cast<int32_t>(std::round(wheel_pos.right * encoder_ticks_per_rad));\
+    sensor_data->publish(msg);
+
+    (void)diff->forwardKinematics(wheel_pos);
+
+    const turtlelib::Transform2D T = diff->pose();
+    const turtlelib::Vector2D p = T.translation();
+    x_ = p.x;
+    y_ = p.y;
+    theta_ = T.rotation();
 
     geometry_msgs::msg::TransformStamped t;
 
@@ -261,12 +328,12 @@ private:
     t.header.frame_id = "nusim/world";
     t.child_frame_id = "red/base_footprint";
 
-    t.transform.translation.x = x0_;
-    t.transform.translation.y = y0_;
+    t.transform.translation.x = x_;
+    t.transform.translation.y = y_;
     t.transform.translation.z = 0.0;
 
     tf2::Quaternion q;
-    q.setRPY(0, 0, this->theta0_);
+    q.setRPY(0, 0, this->theta_);
     t.transform.rotation.x = q.x();
     t.transform.rotation.y = q.y();
     t.transform.rotation.z = q.z();
@@ -307,9 +374,14 @@ private:
   {
     timestep_.data = 0;
     RCLCPP_INFO(this->get_logger(), "Reset timestep to 0");
-    x0_ = this->get_parameter("x0").as_double();
-    y0_ = this->get_parameter("y0").as_double();
-    theta0_ = this->get_parameter("theta0").as_double();
+    x_ = this->get_parameter("x0").as_double();
+    y_ = this->get_parameter("y0").as_double();
+    theta_ = this->get_parameter("theta0").as_double();
+    diff->setPose(turtlelib::Transform2D(turtlelib::Vector2D{x_, y_}, theta_));
+
+    wheel_pos = {0.0, 0.0};
+    left_wheel_vel = 0.0;
+    right_wheel_vel = 0.0;
   }
 };
 

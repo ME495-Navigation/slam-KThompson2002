@@ -13,6 +13,9 @@
 #include "turtlelib/diff_drive.hpp"
 #include "nuturtle_control_interfaces/srv/initial_pose.hpp"
 
+using std::placeholders::_1;
+using std::placeholders::_2;
+
 class Odometry : public rclcpp::Node
 {
 public:
