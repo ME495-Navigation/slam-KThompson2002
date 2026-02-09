@@ -121,7 +121,6 @@ install(TARGETS
 
 install(DIRECTORY
   launch
-  config
   test
   DESTINATION share/${PROJECT_NAME}
 )
