@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// \file
+/// \brief ROS 2 node that converts cmd_vel into wheel commands and publishes joint states.
 #include <chrono>
 #include <memory>
 #include <string>
@@ -29,9 +31,16 @@
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
+/// \brief Node that bridges high-level velocity commands to low-level wheel commands.
+///
+/// It also republishes wheel encoder data as JointState for downstream consumers.
 class turtle_control : public rclcpp::Node
 {
 public:
+  /// \brief Construct the turtle_control node.
+  ///
+  /// Declares required parameters, loads them, initializes the DiffDrive model,
+  /// and creates the necessary publishers and subscribers.
   turtle_control()
   : Node("turtle_control"),
     diff(1.0, 1.0)
@@ -92,7 +101,11 @@ private:
   nuturtlebot_msgs::msg::SensorData prev_sensor_;
   bool have_prev_ = false;
 
-
+  /// \brief Load and validate required ROS parameters.
+  ///
+  /// Reads wheel_radius, track_width, motor_cmd_max, motor_cmd_per_rad_sec, and
+  /// encoder_ticks_per_rad. Logs an error and returns false if any are unset.
+  /// \return true if all required parameters are available and loaded.
   bool load_required_params()
   {
     auto pr = this->get_parameter("wheel_radius");
@@ -137,23 +150,25 @@ private:
     return true;
   }
 
+  /// \brief cmd_vel subscriber callback.
+  ///
+  /// Converts a body twist command into left/right wheel angular velocities via
+  /// inverse kinematics, scales to motor command units, clamps to motor_cmd_max,
+  /// and publishes a WheelCommands message.
+  /// \param msg [in] Incoming twist command in the body frame.
   void twist_callback(const geometry_msgs::msg::Twist & msg)
   {
     turtlelib::Twist2D twist;
     twist.x = msg.linear.x;
     twist.omega = msg.angular.z;
     twist.y = 0.0;
-    // RCLCPP_INFO(this->get_logger(), "twist.x: vel=%.3f rad/s", twist.x);
     turtlelib::Wheel wdot = diff.inverseKinematics(twist);
-    // RCLCPP_INFO(this->get_logger(), "wdot.left: vel=%.3f rad/s", wdot.left);
 
     int left_mcu = static_cast<int>(std::round(wdot.left / motor_cmd_per_rad_sec));
     int right_mcu = static_cast<int>(std::round(wdot.right / motor_cmd_per_rad_sec));
     int cmd_max = static_cast<int>(motor_cmd_max);
-    // RCLCPP_INFO(this->get_logger(), "Left_mcu before clamp: vel=%.3d rad/s", left_mcu);
     left_mcu = std::clamp(left_mcu, -cmd_max, cmd_max);
     right_mcu = std::clamp(right_mcu, -cmd_max, cmd_max);
-    // RCLCPP_INFO(this->get_logger(), "Left_mcu: vel=%.3d rad/s", left_mcu);
 
     auto cmd = nuturtlebot_msgs::msg::WheelCommands();
     cmd.left_velocity = left_mcu;
@@ -161,6 +176,12 @@ private:
     wheel_cmd->publish(cmd);
   }
 
+  /// \brief sensor_data subscriber callback.
+  ///
+  /// Converts encoder ticks to wheel joint positions (rad) and estimates wheel
+  /// velocities by finite differencing successive messages, then publishes a
+  /// JointState message.
+  /// \param msgs [in] Incoming sensor data containing encoder tick counts and stamp.
   void sensor_callback(const nuturtlebot_msgs::msg::SensorData & msgs)
   {
     rclcpp::Time stamp(msgs.stamp.sec, msgs.stamp.nanosec, RCL_ROS_TIME);
@@ -184,12 +205,6 @@ private:
       right_vel = static_cast<double>(d_right_ticks) / (encoder_ticks_per_rad * dt);
     }
 
-    // turtlelib::Wheel wheels_rad;
-    // wheels_rad.left  = msgs.left_encoder  / encoder_ticks_per_rad;
-    // wheels_rad.right = msgs.right_encoder / encoder_ticks_per_rad;
-
-    // turtlelib::Twist2D body_twist = diff.forwardKinematics(wheels_rad);
-
     auto cmd = sensor_msgs::msg::JointState();
     cmd.header.stamp = stamp;
     cmd.name = {"wheel_left_joint", "wheel_right_joint"};
@@ -202,6 +217,8 @@ private:
   }
 };
 
+/// \brief Entry point for the turtle_control node.
+/// \return 0 on clean shutdown.
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);

@@ -1,3 +1,5 @@
+/// \file
+/// \brief ROS 2 node that computes and publishes differential-drive odometry.
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -16,9 +18,14 @@
 using std::placeholders::_1;
 using std::placeholders::_2;
 
+/// \brief Node that estimates the robot pose from wheel encoder positions.
+///
+/// The node reads wheel joint names and kinematic parameters from ROS parameters,
+/// then uses forward kinematics to update the pose and publish odom + TF.
 class Odometry : public rclcpp::Node
 {
 public:
+  /// \brief Construct the Odometry node.
   Odometry()
   : Node("odometry")
   {
@@ -78,6 +85,11 @@ private:
   std::unique_ptr<turtlelib::DiffDrive> diff;
   turtlelib::Wheel last_wheels;
 
+  /// \brief JointState subscriber callback.
+  ///
+  /// Extracts the left/right wheel positions from the incoming JointState message,
+  /// updates the DiffDrive pose via forward kinematics, then publishes odom + TF.
+  /// \param js [in] JointState message containing wheel positions.
   void joint_callback(const sensor_msgs::msg::JointState & js)
   {
     turtlelib::Wheel wheels;
@@ -89,33 +101,36 @@ private:
       }
     }
     last_wheels = wheels;
-    // RCLCPP_INFO(this->get_logger(), "wheels left: %.3f, wheels right:%.3f", wheels.left, wheels.right);
 
     turtlelib::Twist2D Vb = diff->forwardKinematics(wheels);
 
     publish_odom_and_tf(js.header.stamp, Vb);
   }
 
+  /// \brief Service callback to reset the odometry pose.
+  ///
+  /// Sets the internal DiffDrive pose to the requested (x, y, theta).
+  /// \param req [in] Requested initial pose.
+  /// \param res [out] Response indicating success.
   void initial_pose_callback(
     const std::shared_ptr<nuturtle_control_interfaces::srv::InitialPose::Request> req,
     std::shared_ptr<nuturtle_control_interfaces::srv::InitialPose::Response> res)
   {
-    // RCLCPP_INFO(this->get_logger(), "twist pose: x=%.3f, y=%.3f", req->x, req->y);
     turtlelib::Transform2D T0(turtlelib::Vector2D{req->x, req->y}, req->theta);
     diff->setPose(T0);
-    // turtlelib::Wheel wheels;
-    // wheels.left = 0.0;
-    // wheels.right = 0.0;
-    // diff.setWheelAngles(last_wheels);
 
     res->success = true;
   }
 
+  /// \brief Publish odometry and broadcast the odom->base transform.
+  ///
+  /// \param stamp [in] Timestamp to use for the messages.
+  /// \param Vb [in] Body-frame twist computed from wheel motion.
   void publish_odom_and_tf(
     const builtin_interfaces::msg::Time & stamp,
     const turtlelib::Twist2D & Vb)
   {
-    const turtlelib::Transform2D T = diff->pose();  // adjust if your accessor name differs
+    const turtlelib::Transform2D T = diff->pose();
     const turtlelib::Vector2D p = T.translation();
     const double yaw = T.rotation();
 
@@ -128,7 +143,6 @@ private:
     odom.pose.pose.position.x = p.x;
     odom.pose.pose.position.y = p.y;
     odom.pose.pose.position.z = 0.0;
-    // RCLCPP_INFO(this->get_logger(), "twist pose: x=%.3f, y=%.3f", p.x, p.y);
 
     tf2::Quaternion q;
     q.setRPY(0.0, 0.0, yaw);
@@ -164,6 +178,8 @@ private:
   }
 };
 
+/// \brief Entry point for the odometry node.
+/// \return 0 on clean shutdown.
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);

@@ -35,10 +35,15 @@ namespace turtlelib
         /// \brief Get current pose 
         Transform2D pose() const;
 
+        /// \brief Set current post
+        /// \param T Transform for new pose
         void setPose(const Transform2D & T);
 
+        /// \brief Get Wheel Angles
         Wheel wheelAngles() const;
 
+        /// \brief Set Wheel Angles
+        /// \param w New wheel angles
         void setWheelAngles(const Wheel & w);
 
         /// \brief get wheel geometry params 

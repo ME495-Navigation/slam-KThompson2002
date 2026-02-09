@@ -1,3 +1,5 @@
+/// \file
+/// \brief ROS 2 node that publishes cmd_vel commands to drive the robot in a circle.
 #include <cmath>
 #include <memory>
 #include <string>
@@ -12,9 +14,17 @@ using namespace std::chrono_literals;
 using std::placeholders::_1;
 using std::placeholders::_2;
 
+/// \brief Node that generates a circular velocity command.
+///
+/// Publishes geometry_msgs::msg::Twist on the cmd_vel topic at a configured frequency.
+/// The motion can be controlled via services (control, reverse, stop).
 class Circle : public rclcpp::Node
 {
 public:
+  /// \brief Construct the Circle node.
+  ///
+  /// Declares/reads the "frequency" parameter, creates the cmd_vel publisher,
+  /// sets up control services, and starts a wall timer to publish commands.
   Circle()
   : Node("circle")
   {
@@ -62,6 +72,10 @@ private:
   double vel = 0.0;
   double radius = 1.0;
 
+  /// \brief Timer callback to publish the current velocity command.
+  ///
+  /// When running is false, publishes zero linear and angular velocity.
+  /// Otherwise publishes a twist corresponding to the current (velocity, radius).
   void timer_callback()
   {
     geometry_msgs::msg::Twist cmd;
@@ -77,6 +91,10 @@ private:
     cmd_pub_->publish(cmd);
   }
 
+  /// \brief Service callback to start/modify circular motion.
+  ///
+  /// \param req [in] Requested angular velocity (rad/s) and radius (m).
+  /// \param res [out] Response indicating success.
   void control_callback(
     const std::shared_ptr<nuturtle_control_interfaces::srv::CircleControl::Request> req,
     std::shared_ptr<nuturtle_control_interfaces::srv::CircleControl::Response> res)
@@ -89,6 +107,11 @@ private:
     RCLCPP_INFO(this->get_logger(), "Control set: vel%.3f rad/s, radius=%.3f m", vel, radius);
   }
 
+  /// \brief Service callback to reverse the direction of rotation.
+  ///
+  /// Negates the stored angular velocity while preserving the current radius.
+  /// \param req [in] Unused empty request.
+  /// \param res [out] Unused empty response.
   void reverse_callback(
     const std::shared_ptr<std_srvs::srv::Empty::Request>,
     std::shared_ptr<std_srvs::srv::Empty::Response>)
@@ -97,6 +120,11 @@ private:
     RCLCPP_INFO(this->get_logger(), "Reversed: vel=%.3f rad/s", vel);
   }
 
+  /// \brief Service callback to stop publishing motion commands.
+  ///
+  /// Sets running to false and zeros the stored velocity.
+  /// \param req [in] Unused empty request.
+  /// \param res [out] Unused empty response.
   void stop_callback(
     const std::shared_ptr<std_srvs::srv::Empty::Request>,
     std::shared_ptr<std_srvs::srv::Empty::Response>)
@@ -107,6 +135,8 @@ private:
   }
 };
 
+/// \brief Entry point for the circle node.
+/// \return 0 on clean shutdown.
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);

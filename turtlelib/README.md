@@ -40,3 +40,8 @@ A utility to visualize the geometry and math objects.
     * Draw individual `Point2D` and `Vector2D` objects.
     * Draw `Transform2D` coordinate frames (visualized as Red/Green axis arrows).
     * Automatically handles the conversion from internal "turtle units" to SVG pixel coordinates.
+
+### 5. Differential Drive ('diff_drive.hpp)
+A utility to complete inverse and forward dynamics of a differential drive robot
+* **Wheel**: Represents the two wheel positions.
+* **DiffDriuve**: Represents a Transform2D pose and the track width and wheel radius of the robot
