@@ -34,10 +34,10 @@ class turtle_control : public rclcpp::Node
 public:
   turtle_control()
   : Node("turtle_control"),
-  diff(1.0, 1.0)
+    diff(1.0, 1.0)
   {
     this->declare_parameter<double>("wheel_radius", rclcpp::PARAMETER_NOT_SET);
-    this->declare_parameter<double>("track_width",  rclcpp::PARAMETER_NOT_SET);
+    this->declare_parameter<double>("track_width", rclcpp::PARAMETER_NOT_SET);
     this->declare_parameter<double>("motor_cmd_max", rclcpp::PARAMETER_NOT_SET);
     this->declare_parameter<double>("motor_cmd_per_rad_sec", rclcpp::PARAMETER_NOT_SET);
     this->declare_parameter<double>("encoder_ticks_per_rad", rclcpp::PARAMETER_NOT_SET);
@@ -70,7 +70,8 @@ public:
         10
     );
 
-  };
+  }
+
 private:
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel;
   rclcpp::Subscription<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data;
@@ -100,7 +101,7 @@ private:
         "Missing required parameter: wheel_radius");
       return false;
     }
-     wheel_radius = pr.as_double();
+    wheel_radius = pr.as_double();
 
     auto pt = this->get_parameter("track_width");
     if (pt.get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET) {
@@ -146,11 +147,11 @@ private:
     turtlelib::Wheel wdot = diff.inverseKinematics(twist);
     // RCLCPP_INFO(this->get_logger(), "wdot.left: vel=%.3f rad/s", wdot.left);
 
-    int left_mcu  = static_cast<int>(std::round(wdot.left / motor_cmd_per_rad_sec));
+    int left_mcu = static_cast<int>(std::round(wdot.left / motor_cmd_per_rad_sec));
     int right_mcu = static_cast<int>(std::round(wdot.right / motor_cmd_per_rad_sec));
     int cmd_max = static_cast<int>(motor_cmd_max);
     // RCLCPP_INFO(this->get_logger(), "Left_mcu before clamp: vel=%.3d rad/s", left_mcu);
-    left_mcu  = std::clamp(left_mcu,  -cmd_max, cmd_max);
+    left_mcu = std::clamp(left_mcu, -cmd_max, cmd_max);
     right_mcu = std::clamp(right_mcu, -cmd_max, cmd_max);
     // RCLCPP_INFO(this->get_logger(), "Left_mcu: vel=%.3d rad/s", left_mcu);
 
@@ -163,24 +164,23 @@ private:
   void sensor_callback(const nuturtlebot_msgs::msg::SensorData & msgs)
   {
     rclcpp::Time stamp(msgs.stamp.sec, msgs.stamp.nanosec, RCL_ROS_TIME);
-    double left_pos  = static_cast<double>(msgs.left_encoder)  / encoder_ticks_per_rad;
+    double left_pos = static_cast<double>(msgs.left_encoder) / encoder_ticks_per_rad;
     double right_pos = static_cast<double>(msgs.right_encoder) / encoder_ticks_per_rad;
 
     double left_vel = 0.0;
     double right_vel = 0.0;
 
-    if (have_prev_) 
-    {
+    if (have_prev_) {
       rclcpp::Time prev_stamp(prev_sensor_.stamp.sec,
-                              prev_sensor_.stamp.nanosec,
-                              RCL_ROS_TIME);
+        prev_sensor_.stamp.nanosec,
+        RCL_ROS_TIME);
 
       double dt = (stamp - prev_stamp).seconds();
 
-      int32_t d_left_ticks  = msgs.left_encoder  - prev_sensor_.left_encoder;
+      int32_t d_left_ticks = msgs.left_encoder - prev_sensor_.left_encoder;
       int32_t d_right_ticks = msgs.right_encoder - prev_sensor_.right_encoder;
 
-      left_vel  = static_cast<double>(d_left_ticks)  / (encoder_ticks_per_rad * dt);
+      left_vel = static_cast<double>(d_left_ticks) / (encoder_ticks_per_rad * dt);
       right_vel = static_cast<double>(d_right_ticks) / (encoder_ticks_per_rad * dt);
     }
 

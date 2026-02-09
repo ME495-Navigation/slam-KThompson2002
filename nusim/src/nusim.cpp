@@ -98,7 +98,7 @@ public:
     this->declare_parameter<std::vector<double>>("obstacles.x", std::vector<double>{});
     this->declare_parameter<std::vector<double>>("obstacles.y", std::vector<double>{});
     this->declare_parameter<double>("obstacles.r", 0.0);
-    
+
 
     rate = this->get_parameter("rate").as_int();
     x_ = this->get_parameter("x0").as_double();
@@ -113,7 +113,7 @@ public:
     xs = this->get_parameter("obstacles.x").as_double_array();
     ys = this->get_parameter("obstacles.y").as_double_array();
     r = this->get_parameter("obstacles.r").as_double();
-    
+
 
     if (xs.size() != ys.size()) {
       RCLCPP_INFO(this->get_logger(), "arrays of different length");
@@ -290,7 +290,7 @@ private:
   {
     constexpr double motor_cmd_per_rad_sec = 0.024;
 
-    left_wheel_vel = static_cast<double>(msgs.left_velocity)  * motor_cmd_per_rad_sec;
+    left_wheel_vel = static_cast<double>(msgs.left_velocity) * motor_cmd_per_rad_sec;
     right_wheel_vel = static_cast<double>(msgs.right_velocity) * motor_cmd_per_rad_sec;
   }
 
@@ -309,14 +309,14 @@ private:
     timestep_.data++;
     this->publisher_->publish(timestep_);
 
-    wheel_pos.left  += left_wheel_vel  * dt;
+    wheel_pos.left += left_wheel_vel * dt;
     wheel_pos.right += right_wheel_vel * dt;
 
     nuturtlebot_msgs::msg::SensorData msg;
     msg.stamp = this->get_clock()->now();
 
-    msg.left_encoder  = static_cast<int32_t>(std::round(wheel_pos.left  * encoder_ticks_per_rad));
-    msg.right_encoder = static_cast<int32_t>(std::round(wheel_pos.right * encoder_ticks_per_rad));\
+    msg.left_encoder = static_cast<int32_t>(std::round(wheel_pos.left * encoder_ticks_per_rad));
+    msg.right_encoder = static_cast<int32_t>(std::round(wheel_pos.right * encoder_ticks_per_rad)); \
     sensor_data->publish(msg);
 
     (void)diff->forwardKinematics(wheel_pos);

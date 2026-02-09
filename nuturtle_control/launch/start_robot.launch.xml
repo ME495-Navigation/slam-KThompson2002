@@ -72,7 +72,6 @@
 
         <node pkg="numsr_turtlebot" exec="numsr_turtlebot"/>
 
-        
     </group>
 
 

@@ -56,11 +56,12 @@ public:
 
     init_pose = this->create_service<nuturtle_control_interfaces::srv::InitialPose>(
       "initial_pose",
-      std::bind(&Odometry::initial_pose_callback, this, 
+      std::bind(&Odometry::initial_pose_callback, this,
                 std::placeholders::_1, std::placeholders::_2)
     );
 
   }
+
 private:
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
@@ -80,14 +81,10 @@ private:
   void joint_callback(const sensor_msgs::msg::JointState & js)
   {
     turtlelib::Wheel wheels;
-    for (size_t i = 0; i < js.name.size(); ++i)
-    {
-      if (js.name[i] == wheel_left) 
-      {
+    for (size_t i = 0; i < js.name.size(); ++i) {
+      if (js.name[i] == wheel_left) {
         wheels.left = js.position[i];
-      }
-      else if (js.name[i] == wheel_right)
-      {
+      } else if (js.name[i] == wheel_right) {
         wheels.right = js.position[i];
       }
     }
@@ -95,13 +92,13 @@ private:
     // RCLCPP_INFO(this->get_logger(), "wheels left: %.3f, wheels right:%.3f", wheels.left, wheels.right);
 
     turtlelib::Twist2D Vb = diff->forwardKinematics(wheels);
-    
+
     publish_odom_and_tf(js.header.stamp, Vb);
   }
 
   void initial_pose_callback(
-  const std::shared_ptr<nuturtle_control_interfaces::srv::InitialPose::Request> req,
-  std::shared_ptr<nuturtle_control_interfaces::srv::InitialPose::Response> res)
+    const std::shared_ptr<nuturtle_control_interfaces::srv::InitialPose::Request> req,
+    std::shared_ptr<nuturtle_control_interfaces::srv::InitialPose::Response> res)
   {
     // RCLCPP_INFO(this->get_logger(), "twist pose: x=%.3f, y=%.3f", req->x, req->y);
     turtlelib::Transform2D T0(turtlelib::Vector2D{req->x, req->y}, req->theta);
@@ -114,8 +111,9 @@ private:
     res->success = true;
   }
 
-  void publish_odom_and_tf(const builtin_interfaces::msg::Time & stamp,
-                           const turtlelib::Twist2D & Vb)
+  void publish_odom_and_tf(
+    const builtin_interfaces::msg::Time & stamp,
+    const turtlelib::Twist2D & Vb)
   {
     const turtlelib::Transform2D T = diff->pose();  // adjust if your accessor name differs
     const turtlelib::Vector2D p = T.translation();

@@ -24,6 +24,7 @@ find_package(nuturtle_control_interfaces REQUIRED)
 add_executable(turtle_control src/turtle_control.cpp)
 add_executable(odometry src/odometry.cpp)
 add_executable(circle src/circle.cpp)
+
 target_link_libraries(turtle_control PUBLIC
   ${geometry_msgs_TARGETS}
   ${nuturtlebot_msgs_TARGETS}
@@ -50,8 +51,11 @@ target_link_libraries(circle PUBLIC
   rclcpp::rclcpp
 )
 
+
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+  add_executable(turtle_control_test src/turtle_control_test.cpp)
   # the following line skips the linter which checks for copyrights
   # comment the line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
@@ -60,6 +64,24 @@ if(BUILD_TESTING)
   # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+  find_package(Catch2 3 REQUIRED)
+  find_package(catch_ros2 REQUIRED)
+  target_link_libraries(turtle_control_test PUBLIC
+    ${geometry_msgs_TARGETS}
+    ${nuturtlebot_msgs_TARGETS}
+    ${sensor_msgs_TARGETS}
+    ${turtlelib_TARGETS}
+    catch_ros2::catch_ros2_with_node_main
+    turtlelib::turtlelib
+    rclcpp::rclcpp
+  )
+  install(TARGETS
+    turtle_control_test
+    DESTINATION lib/${PROJECT_NAME}
+  )
+  catch_ros2_add_integration_test(turtle_control_test
+    LAUNCH_FILE turtle_control_test.launch.xml
+  )
 endif()
 
 install(TARGETS
@@ -72,6 +94,7 @@ install(TARGETS
 install(DIRECTORY
   launch
   config
+  test
   DESTINATION share/${PROJECT_NAME}
 )
 
