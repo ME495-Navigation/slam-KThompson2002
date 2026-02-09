@@ -41,6 +41,7 @@ TEST_CASE("Turtle Control Tests")
     node->declare_parameter<double>("track_width");
     node->declare_parameter<double>("motor_cmd_max");
     node->declare_parameter<double>("motor_cmd_per_rad_sec");
+    node->declare_parameter<double>("encoder_ticks_per_rad");
 
     const double wheel_radius =
     node->get_parameter("wheel_radius").get_parameter_value().get<double>();
@@ -53,6 +54,9 @@ TEST_CASE("Turtle Control Tests")
 
     const double motor_cmd_per_rad_sec =
     node->get_parameter("motor_cmd_per_rad_sec").get_parameter_value().get<double>();
+
+    const double ticks_per_rad =
+    node->get_parameter("encoder_ticks_per_rad").get_parameter_value().get<double>();
 
     auto cmd_vel = node->create_publisher<geometry_msgs::msg::Twist>(
         "cmd_vel",
@@ -177,5 +181,46 @@ TEST_CASE("Turtle Control Tests")
       vel_right = 0.0;
       wheel_pos.left = 0.0;
       wheel_pos.right = 0.0;
+
+      rclcpp::Clock clock(RCL_STEADY_TIME);
+      rclcpp::Rate rate(200);
+
+      nuturtlebot_msgs::msg::SensorData s1;
+      s1.left_encoder = 1000;
+      s1.right_encoder = 2000;
+      s1.stamp = node->get_clock()->now();
+
+      auto start = clock.now();
+      while ((clock.now() - start) < rclcpp::Duration::from_seconds(0.2)) {
+      sensor_data->publish(s1);
+      rclcpp::spin_some(node);
+      rate.sleep();
+      }
+
+      const double dt = 0.5;
+
+      nuturtlebot_msgs::msg::SensorData s2;
+      s2.left_encoder = 1300;
+      s2.right_encoder = 2600;
+      s2.stamp = node->get_clock()->now();
+
+      start = clock.now();
+      while ((clock.now() - start) < rclcpp::Duration::from_seconds(dt)) {
+      sensor_data->publish(s2);
+      rclcpp::spin_some(node);
+      rate.sleep();
+      }
+
+      REQUIRE(got_joint_msg);
+
+      const double expected_left_pos = s2.left_encoder / ticks_per_rad;
+      const double expected_right_pos = s2.right_encoder / ticks_per_rad;
+      CAPTURE(wheel_pos.left, wheel_pos.right);
+      CAPTURE(expected_left_pos, expected_right_pos);
+
+      REQUIRE_THAT(wheel_pos.left,
+        Catch::Matchers::WithinAbs(expected_left_pos, 1e-6));
+      REQUIRE_THAT(wheel_pos.right,
+        Catch::Matchers::WithinAbs(expected_right_pos, 1e-6));
     }
 }
