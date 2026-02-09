@@ -49,7 +49,7 @@ bool wait_for_transform(
   return false;
 }
 
-TEST_CASE("initial_pose service works", "[integration][odom]")
+TEST_CASE("initial_pose service works")
 {
   auto node = rclcpp::Node::make_shared("turtle_odom_test_node");
 
@@ -91,7 +91,7 @@ TEST_CASE("initial_pose service works", "[integration][odom]")
   REQUIRE(res->success);
 }
 
-TEST_CASE("odom->base_footprint TF is published and identity", "[integration][odom][tf]")
+TEST_CASE("odom->base_footprint TF is published")
 {
   auto node = rclcpp::Node::make_shared("turtle_odom_test_node");
 
