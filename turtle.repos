@@ -7,4 +7,4 @@ repositories:
   nuturtlebot_msgs:
     type: git
     url: git@github.com:NU-MSR/nuturtlebot_msgs.git
-    version: main
+    version: ros2
