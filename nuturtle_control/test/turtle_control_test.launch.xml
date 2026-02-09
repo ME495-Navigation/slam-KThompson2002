@@ -1,0 +1,9 @@
+<launch>
+    <node pkg="nuturtle_control" exec="turtle_control">
+        <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml" />
+    </node>
+
+    <catch2_integration_test_node pkg="nuturtle_control" exec="turtle_control_test">
+        <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml" />
+    </catch2_integration_test_node>
+</launch>

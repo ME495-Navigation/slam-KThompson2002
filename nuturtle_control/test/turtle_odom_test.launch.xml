@@ -1,0 +1,18 @@
+<launch>
+    <node pkg="nuturtle_control" exec="odometry">
+        <param name="body_id" value="base_footprint"/>
+        <param name="odom_id" value="odom"/>
+        <param name="wheel_left" value="wheel_left_joint"/>
+        <param name="wheel_right" value="wheel_right_joint"/>
+
+        <param name="track" value="0.16"/>
+        <param name="radius" value="0.033"/>
+    </node>
+
+    <catch2_integration_test_node pkg="nuturtle_control" exec="turtle_odom_test_node">
+        <param name="body_id" value="base_footprint"/>
+        <param name="odom_id" value="odom"/>
+        <param name="wheel_left" value="wheel_left_joint"/>
+        <param name="wheel_right" value="wheel_right_joint"/>
+    </catch2_integration_test_node>
+</launch>

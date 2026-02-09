@@ -1,0 +1,12 @@
+<launch>
+    <node pkg="nuturtle_control" exec="circle">
+        <param name="frequency" value="100.0"/>
+    </node>
+
+    <catch2_integration_test_node pkg="nuturtle_control" exec="turtle_circle_test">
+        <param name="cmd_vel_topic" value="cmd_vel"/>
+        <param name="expected_hz" value="100.0"/>
+        <param name="tolerance_hz" value="10.0"/>
+        <param name="test_duration" value="2.0"/>
+    </catch2_integration_test_node>
+</launch>
