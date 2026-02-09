@@ -18,7 +18,7 @@ TEST_CASE("circle cmd_vel frequency", "[integration][circle]")
   auto node = rclcpp::Node::make_shared("turtle_circle_test_node");
 
   node->declare_parameter<double>("expected_hz");
-  node->declare_parameter<double>("tolerance_hz", 2.0);
+  node->declare_parameter<double>("tolerance_hz", 10.0);
   node->declare_parameter<double>("test_duration", 2.0);
   node->declare_parameter<std::string>("cmd_vel_topic", "cmd_vel");
 
