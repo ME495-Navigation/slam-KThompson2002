@@ -20,8 +20,7 @@ class Odometry : public rclcpp::Node
 {
 public:
   Odometry()
-  : Node("odometry"),
-  diff(1.0, 1.0)
+  : Node("odometry")
   {
     this->declare_parameter("body_id", "base_footprint");
     this->declare_parameter("odom_id", "odom");
@@ -45,7 +44,8 @@ public:
     track_width = this->get_parameter("track_width").as_double();
     wheel_radius = this->get_parameter("wheel_radius").as_double();
 
-    diff = turtlelib::DiffDrive(track_width, wheel_radius);
+    diff = std::make_unique<turtlelib::DiffDrive>(track_width, wheel_radius);
+    diff->setPose(turtlelib::Transform2D(turtlelib::Vector2D{0.0, 0.0}, 0.0));
     odom_pub = this->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
     tf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
@@ -74,8 +74,8 @@ private:
   std::string wheel_right;
   double track_width;
   double wheel_radius;
-
-  turtlelib::DiffDrive diff;
+  std::unique_ptr<turtlelib::DiffDrive> diff;
+  turtlelib::Wheel last_wheels;
 
   void joint_callback(const sensor_msgs::msg::JointState & js)
   {
@@ -91,9 +91,10 @@ private:
         wheels.right = js.position[i];
       }
     }
+    last_wheels = wheels;
     // RCLCPP_INFO(this->get_logger(), "wheels left: %.3f, wheels right:%.3f", wheels.left, wheels.right);
 
-    turtlelib::Twist2D Vb = diff.forwardKinematics(wheels);
+    turtlelib::Twist2D Vb = diff->forwardKinematics(wheels);
     
     publish_odom_and_tf(js.header.stamp, Vb);
   }
@@ -102,12 +103,13 @@ private:
   const std::shared_ptr<nuturtle_control_interfaces::srv::InitialPose::Request> req,
   std::shared_ptr<nuturtle_control_interfaces::srv::InitialPose::Response> res)
   {
+    // RCLCPP_INFO(this->get_logger(), "twist pose: x=%.3f, y=%.3f", req->x, req->y);
     turtlelib::Transform2D T0(turtlelib::Vector2D{req->x, req->y}, req->theta);
-    diff.setPose(T0);
-    turtlelib::Wheel wheels;
-    wheels.left = 0.0;
-    wheels.right = 0.0;
-    diff.setWheelAngles(wheels);
+    diff->setPose(T0);
+    // turtlelib::Wheel wheels;
+    // wheels.left = 0.0;
+    // wheels.right = 0.0;
+    // diff.setWheelAngles(last_wheels);
 
     res->success = true;
   }
@@ -115,7 +117,7 @@ private:
   void publish_odom_and_tf(const builtin_interfaces::msg::Time & stamp,
                            const turtlelib::Twist2D & Vb)
   {
-    const turtlelib::Transform2D T = diff.pose();  // adjust if your accessor name differs
+    const turtlelib::Transform2D T = diff->pose();  // adjust if your accessor name differs
     const turtlelib::Vector2D p = T.translation();
     const double yaw = T.rotation();
 

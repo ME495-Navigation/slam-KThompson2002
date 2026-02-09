@@ -22,6 +22,8 @@
   <exec_depend>tf2</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>nuturtlebot_msgs</exec_depend>
+  <exec_depend>turtlelib</exec_depend>
+  <exec_depend>nuturtle_control_interfaces</exec_depend>
   
   <export>
     <build_type>ament_cmake</build_type>

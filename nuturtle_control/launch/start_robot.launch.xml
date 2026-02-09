@@ -41,7 +41,11 @@
             <remap from="joint_states" to="red/joint_states"/>
         </node>
 
-        
+        <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.xml">
+            <arg name="use_jsp" value="false"/>
+            <arg name="use_rviz" value="false"/>
+            <arg name="color" value="blue"/>
+        </include>
 
         <node pkg="tf2_ros" exec="static_transform_publisher"
         args="0 0 0 0 0 0 nusim/world odom"/>
@@ -49,14 +53,14 @@
     </group>
 
     <group if="$(eval '\'$(var robot)\' == \'localhost\'')">
-        <node pkg="nuturtle_control" exec="turtle_control" namespace="blue">
+        <node pkg="nuturtle_control" exec="turtle_control">
             <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
             <remap from="wheel_cmd" to="wheel_cmd"/>
             <remap from="sensor_data" to="sensor_data"/>
             <remap from="joint_states" to="blue/joint_states"/>
         </node>
 
-        <node pkg="nuturtle_control" exec="odometry" name="odometry" namespace="blue" output="screen">
+        <node pkg="nuturtle_control" exec="odometry" name="odometry">
             <param name="body_id" value="blue/base_footprint"/>
             <param name="odom_id" value="odom"/>
             <param name="wheel_left" value="wheel_left_joint"/>
@@ -67,12 +71,10 @@
         </node>
 
         <node pkg="numsr_turtlebot" exec="numsr_turtlebot"/>
+
+        
     </group>
 
-<include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.xml">
-    <arg name="use_jsp" value="false"/>
-    <arg name="use_rviz" value="false"/>
-    <arg name="color" value="blue"/>
-</include>
+
     
 </launch>
