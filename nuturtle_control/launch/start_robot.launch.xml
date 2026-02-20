@@ -71,7 +71,7 @@
         </node>
 
         <node pkg="numsr_turtlebot" exec="numsr_turtlebot"/>
-
+        <node pkg="hls-lfcd_lds_driver" exec="hlds_laser_publisher"/>
     </group>
 
 
