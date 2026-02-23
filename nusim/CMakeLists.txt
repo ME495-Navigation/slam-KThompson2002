@@ -16,6 +16,8 @@ find_package(visualization_msgs REQUIRED)
 find_package(nuturtlebot_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(turtlelib REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -29,6 +31,8 @@ target_link_libraries(nusimulator PUBLIC
   ${visualization_msgs_TARGETS}
   ${nuturtlebot_msgs_TARGETS}
   ${sensor_msgs_TARGETS}
+  ${nav_msgs_TARGETS}
+  ${geometry_msgs_TARGETS}
   ${turtlelib_TARGETS}
   turtlelib::turtlelib
   rclcpp::rclcpp

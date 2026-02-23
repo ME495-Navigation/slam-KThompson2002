@@ -38,6 +38,7 @@
 #include <memory>
 #include <string>
 #include <cmath>
+#include <random>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -50,6 +51,9 @@
 #include "nuturtlebot_msgs/msg/sensor_data.hpp"
 #include "nuturtlebot_msgs/msg/wheel_commands.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "turtlelib/diff_drive.hpp"
 
 using namespace std::chrono_literals;
@@ -95,6 +99,14 @@ public:
     this->declare_parameter("wheel_radius", 0.033);
     this->declare_parameter("encoder_ticks_per_rad", 651.9);
     this->declare_parameter("motor_cmd_per_rad_sec", 0.024);
+    this->declare_parameter("range_min", 0.12);
+    this->declare_parameter("range_max", 3.5);
+    this->declare_parameter("angle_increments", 0.01745);
+    this->declare_parameter("num_samples", 360);
+    this->declare_parameter("resolution", 10.0);
+    this->declare_parameter("noise", 180.0);
+    this->declare_parameter("input_noise", 0.0);
+    this->declare_parameter("slip_fraction", 0.0);
     this->declare_parameter<std::vector<double>>("obstacles.x", std::vector<double>{});
     this->declare_parameter<std::vector<double>>("obstacles.y", std::vector<double>{});
     this->declare_parameter<double>("obstacles.r", 0.0);
@@ -113,6 +125,14 @@ public:
     xs = this->get_parameter("obstacles.x").as_double_array();
     ys = this->get_parameter("obstacles.y").as_double_array();
     r = this->get_parameter("obstacles.r").as_double();
+    range_min = this->get_parameter("range_min").as_double();
+    range_max = this->get_parameter("range_max").as_double();
+    angle_increment = this->get_parameter("angle_increments").as_double();
+    num_samples = this->get_parameter("num_samples").as_double();
+    resolution = this->get_parameter("resolution").as_double();
+    noise = this->get_parameter("noise").as_double();
+    input_noise = this->get_parameter("input_noise").as_double();
+    slip_fraction = this->get_parameter("slip_fraction").as_double();
 
 
     if (xs.size() != ys.size()) {
@@ -155,6 +175,16 @@ public:
         "red/joint_states",
         10
     );
+
+    nav_path = this->create_publisher<nav_msgs::msg::Path>(
+      "red/nav_path",
+      10
+    );
+
+    laser_scan = this->create_publisher<sensor_msgs::msg::LaserScan>(
+      "red/laser_scan",
+      10
+    );
   }
 
 private:
@@ -168,6 +198,8 @@ private:
   std_msgs::msg::UInt64 timestep_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_states;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr nav_path;
+  rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan;
 
   int rate;
   double x_;
@@ -186,6 +218,21 @@ private:
   double wheel_radius;
   double encoder_ticks_per_rad;
   double motor_cmd_per_rad_sec;
+  // Laser Scan Constants
+  double range_min;
+  double range_max;
+  double angle_increment;
+  int num_samples;
+  double resolution;
+  double noise;
+
+  // Error Constants
+  double input_noise = 0.0;
+  double slip_fraction = 0.0;
+
+  std::mt19937 rng_{std::random_device{}()};
+
+  std::vector<geometry_msgs::msg::PoseStamped> poses;
 
   /**
    * \brief Create a cylindrical RViz marker representing an obstacle.
@@ -290,8 +337,13 @@ private:
   {
     constexpr double motor_cmd_per_rad_sec = 0.024;
 
-    left_wheel_vel = static_cast<double>(msgs.left_velocity) * motor_cmd_per_rad_sec;
-    right_wheel_vel = static_cast<double>(msgs.right_velocity) * motor_cmd_per_rad_sec;
+    auto left_wheel_ui = static_cast<double>(msgs.left_velocity) * motor_cmd_per_rad_sec;
+    auto right_wheel_ui = static_cast<double>(msgs.right_velocity) * motor_cmd_per_rad_sec;
+    
+    std::normal_distribution<> d(0.0, variance);
+    d(get_random());
+    left_wheel_vel = left_wheel_ui + d;
+    right_wheel_vel = right_weel_ui + d;
   }
 
   /**
@@ -309,14 +361,15 @@ private:
     timestep_.data++;
     this->publisher_->publish(timestep_);
 
-    wheel_pos.left += left_wheel_vel * dt;
-    wheel_pos.right += right_wheel_vel * dt;
+    std::uniform_real_distribution<double> slip_dist(-slip_fraction, slip_fraction);
+    wheel_pos.left += left_wheel_vel * (1.0 + slip_dist(rng_)) * dt;
+    wheel_pos.right += right_wheel_vel * (1.0 + slip_dist(rng_)) * dt;
 
     nuturtlebot_msgs::msg::SensorData msg;
     msg.stamp = this->get_clock()->now();
 
     msg.left_encoder = static_cast<int32_t>(std::round(wheel_pos.left * encoder_ticks_per_rad));
-    msg.right_encoder = static_cast<int32_t>(std::round(wheel_pos.right * encoder_ticks_per_rad)); \
+    msg.right_encoder = static_cast<int32_t>(std::round(wheel_pos.right * encoder_ticks_per_rad));
     sensor_data->publish(msg);
 
     (void)diff->forwardKinematics(wheel_pos);
@@ -357,6 +410,26 @@ private:
     // Send the transformation
     tf_broadcaster_->sendTransform(t);
 
+    auto path = nav_msgs::msg::Path();
+    path.header.stamp = this->get_clock()->now();
+
+    geometry_msgs::msg::PoseStamped pose;
+    pose.header.stamp = get_clock()->now();
+    pose.header.frame_id = "nusim/world";
+    pose.pose.position.x = x_;
+    pose.pose.position.y = y_;
+
+    pose.pose.orientation.x = q.x();
+    pose.pose.orientation.y = q.y();
+    pose.pose.orientation.z = q.z();
+    pose.pose.orientation.w = q.w();
+
+    path.header.frame_id = "nusim/world";
+    path.poses.push_back(pose);
+    nav_path->publish(path);
+
+    // Laser Scan implementation
+    
     visualization_msgs::msg::MarkerArray arr;
     const double px = arena_x_length / 2;
     const double py = arena_y_length / 2;
@@ -397,6 +470,16 @@ private:
     wheel_pos = {0.0, 0.0};
     left_wheel_vel = 0.0;
     right_wheel_vel = 0.0;
+  }
+
+  std::mt19937 & get_random()
+  {
+     // static variables inside a function are created once and persist for the remainder of the program
+     static std::random_device rd{}; 
+     static std::mt19937 mt{rd()};
+     // we return a reference to the pseudo-random number genrator object. This is always the
+     // same object every time get_random is called
+     return mt;
   }
 };
 

@@ -67,6 +67,10 @@ public:
                 std::placeholders::_1, std::placeholders::_2)
     );
 
+    nav_path = this->create_publisher<nav_msgs::msg::Path>(
+      "nav_path",
+      10
+    );
   }
 
 private:
@@ -74,6 +78,7 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster;
   rclcpp::Service<nuturtle_control_interfaces::srv::InitialPose>::SharedPtr init_pose;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr nav_path;
 
   // Parameters
   std::string body_id;
@@ -84,6 +89,8 @@ private:
   double wheel_radius;
   std::unique_ptr<turtlelib::DiffDrive> diff;
   turtlelib::Wheel last_wheels;
+
+  std::vector<geometry_msgs::msgs::PoseStamped> poses;
 
   /// \brief JointState subscriber callback.
   ///
@@ -159,6 +166,24 @@ private:
     odom.twist.twist.angular.z = Vb.omega;
 
     odom_pub->publish(odom);
+
+    auto path = nav_msgs::msg::Path();
+    path.header.stamp = this->get_clock()->now();
+
+    geometry_msgs::msg::PoseStamped pose;
+    pose.header.stamp = get_clock()->now();
+    pose.header.frame_id = "nusim/world";
+    pose.pose.position.x = p.x;
+    pose.pose.position.y = p.y;
+
+    pose.pose.orientation.x = q.x();
+    pose.pose.orientation.y = q.y();
+    pose.pose.orientation.z = q.z();
+    pose.pose.orientation.w = q.w();
+
+    path.header.frame_id = "nusim/world";
+    path.poses.push_back(pose);
+    nav_path->publish(path);
 
     // Create Transform message
     geometry_msgs::msg::TransformStamped tf;
