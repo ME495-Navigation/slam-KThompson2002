@@ -7,6 +7,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 
 #include "tf2/LinearMath/Quaternion.h"
@@ -90,7 +91,7 @@ private:
   std::unique_ptr<turtlelib::DiffDrive> diff;
   turtlelib::Wheel last_wheels;
 
-  std::vector<geometry_msgs::msgs::PoseStamped> poses;
+  std::vector<geometry_msgs::msg::PoseStamped> poses;
 
   /// \brief JointState subscriber callback.
   ///
@@ -172,7 +173,7 @@ private:
 
     geometry_msgs::msg::PoseStamped pose;
     pose.header.stamp = get_clock()->now();
-    pose.header.frame_id = "nusim/world";
+    pose.header.frame_id = "odom";
     pose.pose.position.x = p.x;
     pose.pose.position.y = p.y;
 
@@ -181,7 +182,7 @@ private:
     pose.pose.orientation.z = q.z();
     pose.pose.orientation.w = q.w();
 
-    path.header.frame_id = "nusim/world";
+    path.header.frame_id = "odom";
     path.poses.push_back(pose);
     nav_path->publish(path);
 

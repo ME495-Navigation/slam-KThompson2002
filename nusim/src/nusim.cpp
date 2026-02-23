@@ -340,10 +340,9 @@ private:
     auto left_wheel_ui = static_cast<double>(msgs.left_velocity) * motor_cmd_per_rad_sec;
     auto right_wheel_ui = static_cast<double>(msgs.right_velocity) * motor_cmd_per_rad_sec;
     
-    std::normal_distribution<> d(0.0, variance);
-    d(get_random());
-    left_wheel_vel = left_wheel_ui + d;
-    right_wheel_vel = right_weel_ui + d;
+    std::normal_distribution<double> d(0.0, input_noise);
+    left_wheel_vel = left_wheel_ui + d(rng_);
+    right_wheel_vel = right_wheel_ui + d(rng_);
   }
 
   /**
