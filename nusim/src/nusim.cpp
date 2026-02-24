@@ -107,6 +107,7 @@ public:
     this->declare_parameter("noise", 180.0);
     this->declare_parameter("input_noise", 0.0);
     this->declare_parameter("slip_fraction", 0.0);
+    this->declare_parameter("collision_radius", 0.11);
     this->declare_parameter<std::vector<double>>("obstacles.x", std::vector<double>{});
     this->declare_parameter<std::vector<double>>("obstacles.y", std::vector<double>{});
     this->declare_parameter<double>("obstacles.r", 0.0);
@@ -133,6 +134,7 @@ public:
     noise = this->get_parameter("noise").as_double();
     input_noise = this->get_parameter("input_noise").as_double();
     slip_fraction = this->get_parameter("slip_fraction").as_double();
+    collision_radius = this->get_parameter("collision_radius").as_double();
 
 
     if (xs.size() != ys.size()) {
@@ -153,6 +155,11 @@ public:
     timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(period),
       std::bind(&nusimulator::timer_callback, this)
+    );
+    const auto sensor_period = std::chrono::duration<double>(1.0 / static_cast<double>(sensor_hz));
+    sensor_timer = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(sensor_period),
+      std::bind(&nusimulator::sensor_timer_callback, this)
     );
 
     reset_srv_ = this->create_service<std_srvs::srv::Empty>(
@@ -189,9 +196,11 @@ public:
 
 private:
   rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr sensor_timer;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr publisher_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_walls;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_obs;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
   rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd;
   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data;
@@ -202,6 +211,8 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan;
 
   int rate;
+  double sensor_hz = 5.0;
+
   double x_;
   double y_;
   double theta_;
@@ -218,6 +229,7 @@ private:
   double wheel_radius;
   double encoder_ticks_per_rad;
   double motor_cmd_per_rad_sec;
+  double collision_radius;
   // Laser Scan Constants
   double range_min;
   double range_max;
@@ -265,6 +277,47 @@ private:
     m.type = visualization_msgs::msg::Marker::CYLINDER;
     m.action = visualization_msgs::msg::Marker::ADD;
 
+    m.pose.position.x = x;
+    m.pose.position.y = y;
+    m.pose.position.z = 0.125;
+    m.pose.orientation.w = 1.0;
+
+    m.scale.x = 2 * radius;
+    m.scale.y = 2 * radius;
+    m.scale.z = 0.25;
+
+    m.color.a = 1.0;
+    m.color.r = 1.0;
+    m.color.g = 0.0;
+    m.color.b = 0.0;
+    m.lifetime = rclcpp::Duration::from_nanoseconds(0);
+
+    return m;
+  }
+
+  visualization_msgs::msg::Marker makeNoisyCylinder(
+    int id,
+    double x, double y,
+    double radius)
+  {
+    visualization_msgs::msg::Marker m;
+
+    m.header.frame_id = "nusim/world";
+    m.header.stamp = this->now();
+
+    m.ns = "red";
+    m.id = id;
+
+    m.type = visualization_msgs::msg::Marker::CYLINDER;
+
+    const double dx = x - x_;
+    const double dy = y - y_;
+    if (std::sqrt(dx * dx + dy * dy) > range_max) {
+      m.action = visualization_msgs::msg::Marker::DELETE;
+      return m;
+    }
+
+    m.action = visualization_msgs::msg::Marker::ADD;
     m.pose.position.x = x;
     m.pose.position.y = y;
     m.pose.position.z = 0.125;
@@ -379,6 +432,21 @@ private:
     y_ = p.y;
     theta_ = T.rotation();
 
+    // Collision detection and response (one cylinder at a time)
+    for (std::size_t i = 0; i < xs.size(); i++) {
+      const double dx = x_ - xs.at(i);
+      const double dy = y_ - ys.at(i);
+      const double dist = std::sqrt(dx * dx + dy * dy);
+      const double min_dist = collision_radius + r;
+      if (dist < min_dist) {
+        // Move robot along the robot-obstacle line until circles are tangent
+        x_ = xs.at(i) + min_dist * (dx / dist);
+        y_ = ys.at(i) + min_dist * (dy / dist);
+        diff->setPose(turtlelib::Transform2D(turtlelib::Vector2D{x_, y_}, theta_));
+        break;
+      }
+    }
+
     auto cmd = sensor_msgs::msg::JointState();
     cmd.header.stamp = this->get_clock()->now();
     cmd.name = {"wheel_left_joint", "wheel_right_joint"};
@@ -445,6 +513,16 @@ private:
     }
 
     marker_obs->publish(obs);
+  }
+
+  void sensor_timer_callback()
+  {
+    visualization_msgs::msg::MarkerArray fake_sensor_;
+    for (std::size_t i = 0; i < xs.size(); i++) {
+      fake_sensor_.markers.push_back(makeNoisyCylinder(i, xs.at(i), ys.at(i), r));
+    }
+
+    fake_sensor->publish(fake_sensor_);
   }
 
    /**
