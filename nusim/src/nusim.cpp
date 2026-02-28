@@ -521,8 +521,96 @@ private:
     for (std::size_t i = 0; i < xs.size(); i++) {
       fake_sensor_.markers.push_back(makeNoisyCylinder(i, xs.at(i), ys.at(i), r));
     }
-
     fake_sensor->publish(fake_sensor_);
+
+    // --- Simulated LaserScan ---
+    sensor_msgs::msg::LaserScan scan;
+    scan.header.stamp = this->get_clock()->now();
+    scan.header.frame_id = "red/base_footprint";
+    scan.angle_min = 0.0;
+    scan.angle_max = scan.angle_min + (num_samples - 1) * angle_increment;
+    scan.angle_increment = angle_increment;
+    scan.time_increment = 0.0;
+    scan.scan_time = 1.0 / sensor_hz;
+    scan.range_min = range_min;
+    scan.range_max = range_max;
+    scan.ranges.resize(num_samples, 0.0f);
+
+    std::normal_distribution<double> noise_dist(0.0, noise);
+
+    const double half_x = arena_x_length / 2.0;
+    const double half_y = arena_y_length / 2.0;
+
+    for (int s = 0; s < num_samples; s++) {
+      // Ray direction in world frame: body angle + per-sample angle
+      const double ray_angle = theta_ + scan.angle_min + s * angle_increment;
+      const double cos_a = std::cos(ray_angle);
+      const double sin_a = std::sin(ray_angle);
+
+      double min_t = range_max + 1.0;  // start beyond max so we know if nothing was hit
+
+      // Ray-cylinder intersections
+      // Ray: P(t) = (x_ + t*cos_a, y_ + t*sin_a)
+      // Solve: |P(t) - C|^2 = r^2  =>  t^2 + b*t + c = 0
+      for (std::size_t i = 0; i < xs.size(); i++) {
+        const double dx = x_ - xs.at(i);
+        const double dy = y_ - ys.at(i);
+        const double b = 2.0 * (dx * cos_a + dy * sin_a);
+        const double c = dx * dx + dy * dy - r * r;
+        const double disc = b * b - 4.0 * c;
+        if (disc < 0.0) {
+          continue;
+        }
+        const double sqrt_disc = std::sqrt(disc);
+        const double t1 = (-b - sqrt_disc) / 2.0;
+        const double t2 = (-b + sqrt_disc) / 2.0;
+        // Smallest positive root is the entry point
+        const double t = (t1 > 0.0) ? t1 : ((t2 > 0.0) ? t2 : -1.0);
+        if (t > 0.0 && t < min_t) {
+          min_t = t;
+        }
+      }
+
+      // Ray-wall intersections (axis-aligned bounding box)
+      // Right wall: x = +half_x
+      if (std::abs(cos_a) > 1e-9) {
+        const double t = (half_x - x_) / cos_a;
+        if (t > 0.0 && t < min_t && std::abs(y_ + t * sin_a) <= half_y) {
+          min_t = t;
+        }
+      }
+      // Left wall: x = -half_x
+      if (std::abs(cos_a) > 1e-9) {
+        const double t = (-half_x - x_) / cos_a;
+        if (t > 0.0 && t < min_t && std::abs(y_ + t * sin_a) <= half_y) {
+          min_t = t;
+        }
+      }
+      // Top wall: y = +half_y
+      if (std::abs(sin_a) > 1e-9) {
+        const double t = (half_y - y_) / sin_a;
+        if (t > 0.0 && t < min_t && std::abs(x_ + t * cos_a) <= half_x) {
+          min_t = t;
+        }
+      }
+      // Bottom wall: y = -half_y
+      if (std::abs(sin_a) > 1e-9) {
+        const double t = (-half_y - y_) / sin_a;
+        if (t > 0.0 && t < min_t && std::abs(x_ + t * cos_a) <= half_x) {
+          min_t = t;
+        }
+      }
+
+      // Only report a return if the hit is within sensor range
+      if (min_t >= range_min && min_t <= range_max) {
+        const double noisy_range = min_t + noise_dist(rng_);
+        scan.ranges[s] = static_cast<float>(
+          std::clamp(noisy_range, static_cast<double>(range_min), static_cast<double>(range_max)));
+      }
+      // else leave as 0.0 (no return / out of range)
+    }
+
+    laser_scan->publish(scan);
   }
 
    /**
