@@ -57,8 +57,41 @@ void EKF::predict(turtlelib::Twist2D twist)
 
   if (dtheta == 0)
   {
-    state_(0) += dx * std::cos(theta)
+    state_(1) += dx * std::cos(theta);
+    state_(2) += dx * std::sin(theta);
   }
+  else
+  {
+    state_(0) += dtheta;
+    state_(1) += -(dx / dtheta) * std::sin(theta) + (dx / dhteta) * std::sin(theta + dtheta);
+    state_(2) += (dx / dtheta) * std::cos(theta) + (dx / dtheta) * std::cos(theta + dtheta); 
+  }
+
+  state_(2) = turtlelib::normalize_angle(state_(2));
+
+  P_ = A * P_ * A.t() + build_Q();
+}
+
+void EKF::update(int id, double r, double phi)
+{
+  if (landmark_indices_.count(id) == 0) {
+    initialize_landmark(id, r, phi);
+  }
+
+  const auto j = landmark_indices_[id];
+  const arma::vec z = {r, phi};
+  const auto z_hat = predicted_measurement(j);
+  const auto H = measurement_jacobian(j);
+
+  auto S = H * P_ * H.t() + R_;
+  auto K = P_ * H.t() * S.i();
+
+  auto dz = z - z_hat;
+  dz(1) = turtlelib::normalize_angle(dz(1));
+
+  state_ += K * dz;
+  state_(0) = turtlelib::normalize_angle(state_(0));
+  P_ = (arma::eye(size, size) - K * H) * P_;
 }
 
 std::size_t EKF::num_landmarks() const
@@ -72,11 +105,12 @@ void EKF::initialize_landmark(int id, double r, double phi)
   landmark_indices_[id] = j;
 
   // Invert the measurement model to get map-frame position (eqs. 23-24)
-  const double theta = state_(0);
-  const double x     = state_(1);
-  const double y     = state_(2);
-  const double mx    = x + r * std::cos(phi + theta);
-  const double my    = y + r * std::sin(phi + theta);
+  const auto theta = state_(0);
+  const auto x     = state_(1);
+  const auto y     = state_(2);
+  const auto mx    = x + r * std::cos(phi + theta);
+  const auto
+   my    = y + r * std::sin(phi + theta);
 
   // Grow the state vector by two elements
   state_.resize(state_.n_elem + 2);
@@ -92,6 +126,72 @@ void EKF::initialize_landmark(int id, double r, double phi)
   P_new(old_size,     old_size)     = 1e6;
   P_new(old_size + 1, old_size + 1) = 1e6;
   P_ = P_new;
+}
+
+arma::vec EKF::predicted_measurement(std::size_t map_idx) const
+{
+  const auto theta = state_(0);
+  const auto x = state_(1);
+  const auto y = state_(2);
+
+  const auto mx = state_(3 + 2*map_idx);
+  const auto my = state_(3 + 2*map_idx + 1);
+
+  const auto dx = mx - x;
+  const auto dy = my - y;
+  const auto d = dx * dx + dy * dy;
+  auto r_hat = std::sqrt(d);
+  auto phi_hat = turtlelib::normalize_angle(std::atan2(dy, dx) - theta);
+
+  arma::vec pred = {r_hat, phi_hat};
+  return pred;
+}
+
+arma::mat EKF::measurement_jacobian(std::size_t map_idx) const
+{
+  const auto theta = state_(0);
+  const auto x = state_(1);
+  const auto y = state_(2);
+
+  const auto mx = state_(3 + 2*map_idx);
+  const auto my = state_(3 + 2*map_idx + 1);
+
+  const auto dx = mx - x;
+  const auto dy = my - y;
+  const auto d = dx * dx + dy * dy;
+
+  const auto size = 3 + 2 * num_landmarks();
+  arma::mat H = arma::zeros(2, size);
+
+  H(0, 0) =  0.0;
+  H(0, 1) = -dx / std::sqrt(d);
+  H(0, 2) = -dy / std::sqrt(d);
+  H(1, 0) = -1.0;
+  H(1, 1) =  dy / d;
+  H(1, 2) = -dx / d;
+
+  H(0, 3 + 2 * map_idx) = dx / std::sqrt(d);
+  H(0, 3 + 2 * map_idx + 1) = dy / std::sqrt(d);
+  H(1, 3 + 2 * map_idx) = -dy / d;
+  H(1, 3 + 2 * map_idx + 1) = dx / d;
+
+  return H;
+}
+
+
+turtlelib::Transform2D EKF::pose() const
+{
+  return turtlelib::Transform2D{{state_(1), state_(2)}, state_(0)};
+}
+
+turtlelib::Vector2D EKF::landmark(int id) const
+{
+  const auto it = landmark_indices_.find(id);
+  if (it == landmark_indices_.end()) {
+    throw std::out_of_range("EKF::landmark: id has never been observed");
+  }
+  const auto j = it->second;
+  return {state_(3 + 2 * j), state_(3 + 2 * j + 1)};
 }
 
 }  // namespace nuslam
