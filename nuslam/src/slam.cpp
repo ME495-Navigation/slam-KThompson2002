@@ -145,6 +145,13 @@ private:
       seen_ids_.insert(marker.id);
     }
 
+    // Re-broadcast map->odom now that the EKF pose has been corrected.
+    // Without this, the TF stays at the stale post-predict value until the
+    // next joint state arrives, causing the green robot to visibly snap.
+    if (!msg.markers.empty()) {
+      publish_odom_and_tf(msg.markers.front().header.stamp);
+    }
+
     // --- Publish estimated landmark positions ---
     visualization_msgs::msg::MarkerArray map_markers;
     for (const int id : seen_ids_) {

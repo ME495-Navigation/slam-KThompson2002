@@ -107,6 +107,7 @@ public:
     this->declare_parameter("noise", 180.0);
     this->declare_parameter("input_noise", 0.0);
     this->declare_parameter("slip_fraction", 0.0);
+    this->declare_parameter("basic_sensor_variance", 0.0);
     this->declare_parameter("collision_radius", 0.11);
     this->declare_parameter<std::vector<double>>("obstacles.x", std::vector<double>{});
     this->declare_parameter<std::vector<double>>("obstacles.y", std::vector<double>{});
@@ -134,6 +135,7 @@ public:
     noise = this->get_parameter("noise").as_double();
     input_noise = this->get_parameter("input_noise").as_double();
     slip_fraction = this->get_parameter("slip_fraction").as_double();
+    basic_sensor_variance = this->get_parameter("basic_sensor_variance").as_double();
     collision_radius = this->get_parameter("collision_radius").as_double();
 
 
@@ -242,6 +244,7 @@ private:
   // Error Constants
   double input_noise = 0.0;
   double slip_fraction = 0.0;
+  double basic_sensor_variance = 0.0;
 
 
   std::vector<geometry_msgs::msg::PoseStamped> poses;
@@ -318,8 +321,9 @@ private:
     }
 
     m.action = visualization_msgs::msg::Marker::ADD;
-    m.pose.position.x = x;
-    m.pose.position.y = y;
+    std::normal_distribution<double> sensor_dist(0.0, std::sqrt(basic_sensor_variance));
+    m.pose.position.x = x + sensor_dist(get_random());
+    m.pose.position.y = y + sensor_dist(get_random());
     m.pose.position.z = 0.125;
     m.pose.orientation.w = 1.0;
 
@@ -390,7 +394,7 @@ private:
   {
     auto left_wheel_ui = static_cast<double>(msgs.left_velocity) * motor_cmd_per_rad_sec;
     auto right_wheel_ui = static_cast<double>(msgs.right_velocity) * motor_cmd_per_rad_sec;
-    
+
     std::normal_distribution<double> d(0.0, input_noise);
     left_wheel_vel = left_wheel_ui + d(get_random());
     right_wheel_vel = right_wheel_ui + d(get_random());
@@ -493,7 +497,7 @@ private:
     nav_path->publish(path);
 
     // Laser Scan implementation
-    
+
     visualization_msgs::msg::MarkerArray arr;
     const double px = arena_x_length / 2;
     const double py = arena_y_length / 2;
@@ -637,11 +641,11 @@ private:
   std::mt19937 & get_random()
   {
      // static variables inside a function are created once and persist for the remainder of the program
-     static std::random_device rd{}; 
-     static std::mt19937 mt{rd()};
+    static std::random_device rd{};
+    static std::mt19937 mt{rd()};
      // we return a reference to the pseudo-random number genrator object. This is always the
      // same object every time get_random is called
-     return mt;
+    return mt;
   }
 };
 

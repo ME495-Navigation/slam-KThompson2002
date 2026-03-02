@@ -1,0 +1,89 @@
+<launch>
+    <arg name="robot" default="nusim">
+        <choice value="nusim"/>
+        <choice value="localhost"/>
+        <choice value="none"/>
+    </arg>
+
+    <group if="$(eval '\'$(var robot)\' == \'nusim\'')">
+
+        <!-- Nusimulator + red robot model -->
+        <include file="$(find-pkg-share nusim)/launch/nusim.launch.xml">
+            <arg name="use_rviz"     value="false"/>
+            <arg name="use_jsp"      value="false"/>
+            <arg name="world_config" value="slam_world.yaml"/>
+        </include>
+
+        <!-- Wheel control: cmd_vel → wheel_cmd, outputs green/joint_states
+             for the green robot model articulation -->
+        <node pkg="nuturtle_control" exec="turtle_control">
+            <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+            <remap from="wheel_cmd"    to="red/wheel_cmd"/>
+            <remap from="sensor_data"  to="red/sensor_data"/>
+            <remap from="joint_states" to="green/joint_states"/>
+        </node>
+
+        <!-- Odometry for SLAM: broadcasts odom → green/base_footprint.
+             The slam node corrects this via the dynamic map → odom broadcast. -->
+        <node pkg="nuturtle_control" exec="odometry" name="odometry">
+            <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+            <param name="body_id"     value="green/base_footprint"/>
+            <param name="odom_id"     value="odom"/>
+            <param name="wheel_left"  value="wheel_left_joint"/>
+            <param name="wheel_right" value="wheel_right_joint"/>
+            <remap from="joint_states" to="red/joint_states"/>
+            <remap from="nav_path"     to="green/nav_path"/>
+        </node>
+
+        <!-- Second odometry node: broadcasts nusim/world → blue/base_footprint
+             directly from dead-reckoning, bypassing the SLAM map→odom correction.
+             This is the only way to show truly uncorrected odometry in the world frame. -->
+        <node pkg="nuturtle_control" exec="odometry" name="odometry_blue">
+            <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+            <param name="body_id"     value="blue/base_footprint"/>
+            <param name="odom_id"     value="nusim/world"/>
+            <param name="wheel_left"  value="wheel_left_joint"/>
+            <param name="wheel_right" value="wheel_right_joint"/>
+            <remap from="joint_states" to="red/joint_states"/>
+            <remap from="nav_path"     to="blue/nav_path"/>
+        </node>
+
+        <!-- SLAM node: subscribes to joint_states + fake_sensor,
+             broadcasts map → odom, publishes ~/odom ~/path ~/map -->
+        <node pkg="nuslam" exec="slam" name="slam">
+            <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+            <param name="body_id"     value="green/base_footprint"/>
+            <param name="odom_id"     value="odom"/>
+            <param name="wheel_left"  value="wheel_left_joint"/>
+            <param name="wheel_right" value="wheel_right_joint"/>
+            <remap from="joint_states" to="red/joint_states"/>
+            <remap from="fake_sensor"  to="/nusimulator/fake_sensor"/>
+        </node>
+
+        <!-- Blue robot model (uncorrected dead-reckoning).
+             use_jsp=true since turtle_control only publishes to green/joint_states. -->
+        <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.xml">
+            <arg name="color"    value="blue"/>
+            <arg name="use_jsp"  value="true"/>
+            <arg name="use_rviz" value="false"/>
+        </include>
+
+        <!-- Green robot model (SLAM estimate) -->
+        <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.xml">
+            <arg name="color"    value="green"/>
+            <arg name="use_jsp"  value="false"/>
+            <arg name="use_rviz" value="false"/>
+        </include>
+
+        <!-- Connects nusim/world to the SLAM map frame (identity at startup).
+             Allows RViz to show red/blue items alongside green SLAM items
+             when using map as the fixed frame. -->
+        <node pkg="tf2_ros" exec="static_transform_publisher"
+              args="0 0 0 0 0 0 nusim/world map"/>
+
+        <node pkg="rviz2" exec="rviz2"
+              args="-d $(find-pkg-share nuslam)/config/slam.rviz"
+              on_exit="shutdown"/>
+
+    </group>
+</launch>
