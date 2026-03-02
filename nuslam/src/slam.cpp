@@ -135,12 +135,14 @@ private:
         continue;
       }
 
+      // Inline Citation - [7]
       // Markers arrive in the robot body frame (red/base_footprint), so r and phi
       // are computed directly — no EKF pose subtraction needed or correct here.
       const double mx = marker.pose.position.x;
       const double my = marker.pose.position.y;
       const double r = std::sqrt(mx * mx + my * my);
       const double phi = turtlelib::normalize_angle(std::atan2(my, mx));
+      // End Inline Citation
 
       ekf_->update(marker.id, r, phi);
       seen_ids_.insert(marker.id);

@@ -323,6 +323,7 @@ private:
 
     m.action = visualization_msgs::msg::Marker::ADD;
     std::normal_distribution<double> sensor_dist(0.0, std::sqrt(basic_sensor_variance));
+    // Inline Citation [7]
     // Rotate world-relative offset into robot body frame.
     const double cos_t = std::cos(theta_);
     const double sin_t = std::sin(theta_);
@@ -332,6 +333,7 @@ private:
     m.pose.position.y = dy_body + sensor_dist(get_random());
     m.pose.position.z = 0.125;
     m.pose.orientation.w = 1.0;
+    // End Inline Citation [7]
 
     m.scale.x = 2 * radius;
     m.scale.y = 2 * radius;
