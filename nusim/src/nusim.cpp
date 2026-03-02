@@ -151,6 +151,7 @@ public:
     marker_walls = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/real_walls", 10);
     marker_obs = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/real_obstacles",
       10);
+    fake_sensor = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/fake_sensor", 10);
     const auto period = std::chrono::duration<double>(1.0 / static_cast<double>(rate));
     timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(period),

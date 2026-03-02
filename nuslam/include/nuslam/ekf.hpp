@@ -55,6 +55,9 @@ public:
   /// \brief Return the number of landmarks currently tracked.
   std::size_t num_landmarks() const;
 
+  /// \brief Return the current state covariance matrix, size (3+2N) x (3+2N).
+  arma::mat covariance() const;
+
 private:
   /// \brief Add a new landmark to the state vector and covariance matrix.
   ///        Converts the first measurement (r, phi) into a map-frame position

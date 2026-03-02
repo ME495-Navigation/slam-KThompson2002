@@ -11,29 +11,38 @@ find_package(rclcpp REQUIRED)
 find_package(turtlelib REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(Armadillo REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 add_executable(slam src/slam.cpp)
 add_library(ekf src/ekf.cpp)
 target_include_directories(ekf PUBLIC include)
 target_link_libraries(ekf PUBLIC
   ${turtlelib_TARGETS}
+  ${ARMADILLO_LIBRARIES}
   turtlelib::turtlelib
-  Armadillo::Armadillo
 )
 
 target_link_libraries(slam PUBLIC
   ekf
   ${nav_msgs_TARGETS}
   ${geometry_msgs_TARGETS}
+  ${tf2_TARGETS}
+  ${tf2_ros_TARGETS}
   ${turtlelib_TARGETS}
-  Armadillo::Armadillo
+  ${sensor_msgs_TARGETS}
+  ${ARMADILLO_LIBRARIES}
+  ${visualization_msgs_TARGETS}
   turtlelib::turtlelib
   rclcpp::rclcpp
 )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+  find_package(Catch2 REQUIRED)
   # the following line skips the linter which checks for copyrights
   # comment the line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
@@ -42,6 +51,14 @@ if(BUILD_TESTING)
   # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  add_executable(test_ekf test/test_ekf.cpp)
+  target_link_libraries(test_ekf ekf Catch2::Catch2WithMain)
+  install(TARGETS test_ekf DESTINATION lib/${PROJECT_NAME})
+  ament_add_test(test_ekf
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND "$<TARGET_FILE:test_ekf>"
+  )
 endif()
 
 install(TARGETS

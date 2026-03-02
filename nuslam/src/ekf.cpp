@@ -11,17 +11,17 @@ namespace nuslam
 {
 
 EKF::EKF(arma::mat Q_robot, arma::mat R)
-: Q_robot_{Q_robot},
-  R_{R},
-  state_{arma::zeros(3)},
-  P_{arma::zeros(3, 3)}
+: state_{arma::zeros(3)},
+  P_{arma::zeros(3, 3)},
+  Q_robot_{Q_robot},
+  R_{R}
 {}
 
 arma::mat EKF::build_Q() const
 {
   const auto n = num_landmarks();
   const auto size = 3 + 2 * n;
-  arma::mat Q_Bar = amra::zeros(size, size);
+  arma::mat Q_bar = arma::zeros(size, size);
   Q_bar.submat(0, 0, 2, 2) = Q_robot_;
   return Q_bar;
 }
@@ -34,13 +34,11 @@ arma::mat EKF::state_transition_jacobian(turtlelib::Twist2D twist) const
   const auto dtheta = twist.omega;
   const auto size = 3 + 2 * n;
   arma::mat A = arma::eye<arma::mat>(size, size);
-  if (dtheta == 0) 
-  {
+  constexpr double eps = 1e-9;
+  if (std::abs(dtheta) < eps) {
     A(1, 0) = -dx * std::sin(theta);
-    A(2, 0) =  dx * std::cos(theta);
-  }
-  else 
-  {
+    A(2, 0) = dx * std::cos(theta);
+  } else {
     A(1, 0) = -(dx / dtheta) * std::cos(theta) + (dx / dtheta) * std::cos(theta + dtheta);
     A(2, 0) = -(dx / dtheta) * std::sin(theta) + (dx / dtheta) * std::sin(theta + dtheta);
   }
@@ -55,19 +53,17 @@ void EKF::predict(turtlelib::Twist2D twist)
 
   arma::mat A = state_transition_jacobian(twist);
 
-  if (dtheta == 0)
-  {
+  constexpr double eps = 1e-9;
+  if (std::abs(dtheta) < eps) {
     state_(1) += dx * std::cos(theta);
     state_(2) += dx * std::sin(theta);
-  }
-  else
-  {
+  } else {
     state_(0) += dtheta;
-    state_(1) += -(dx / dtheta) * std::sin(theta) + (dx / dhteta) * std::sin(theta + dtheta);
-    state_(2) += (dx / dtheta) * std::cos(theta) + (dx / dtheta) * std::cos(theta + dtheta); 
+    state_(1) += -(dx / dtheta) * std::sin(theta) + (dx / dtheta) * std::sin(theta + dtheta);
+    state_(2) += (dx / dtheta) * std::cos(theta) - (dx / dtheta) * std::cos(theta + dtheta);
   }
 
-  state_(2) = turtlelib::normalize_angle(state_(2));
+  state_(0) = turtlelib::normalize_angle(state_(0));
 
   P_ = A * P_ * A.t() + build_Q();
 }
@@ -83,20 +79,26 @@ void EKF::update(int id, double r, double phi)
   const auto z_hat = predicted_measurement(j);
   const auto H = measurement_jacobian(j);
 
-  auto S = H * P_ * H.t() + R_;
-  auto K = P_ * H.t() * S.i();
+  const arma::mat S = H * P_ * H.t() + R_;
+  const arma::mat K = P_ * H.t() * S.i();
 
-  auto dz = z - z_hat;
+  arma::vec dz = z - z_hat;
   dz(1) = turtlelib::normalize_angle(dz(1));
 
   state_ += K * dz;
   state_(0) = turtlelib::normalize_angle(state_(0));
+  const auto size = state_.n_elem;
   P_ = (arma::eye(size, size) - K * H) * P_;
 }
 
 std::size_t EKF::num_landmarks() const
 {
   return landmark_indices_.size();
+}
+
+arma::mat EKF::covariance() const
+{
+  return P_;
 }
 
 void EKF::initialize_landmark(int id, double r, double phi)
@@ -106,15 +108,15 @@ void EKF::initialize_landmark(int id, double r, double phi)
 
   // Invert the measurement model to get map-frame position (eqs. 23-24)
   const auto theta = state_(0);
-  const auto x     = state_(1);
-  const auto y     = state_(2);
-  const auto mx    = x + r * std::cos(phi + theta);
+  const auto x = state_(1);
+  const auto y = state_(2);
+  const auto mx = x + r * std::cos(phi + theta);
   const auto
-   my    = y + r * std::sin(phi + theta);
+    my = y + r * std::sin(phi + theta);
 
   // Grow the state vector by two elements
   state_.resize(state_.n_elem + 2);
-  state_(3 + 2 * j)     = mx;
+  state_(3 + 2 * j) = mx;
   state_(3 + 2 * j + 1) = my;
 
   // Grow the covariance matrix, keeping the existing block intact.
@@ -123,7 +125,7 @@ void EKF::initialize_landmark(int id, double r, double phi)
   const std::size_t new_size = old_size + 2;
   arma::mat P_new = arma::zeros(new_size, new_size);
   P_new.submat(0, 0, old_size - 1, old_size - 1) = P_;
-  P_new(old_size,     old_size)     = 1e6;
+  P_new(old_size, old_size) = 1e6;
   P_new(old_size + 1, old_size + 1) = 1e6;
   P_ = P_new;
 }
@@ -134,8 +136,8 @@ arma::vec EKF::predicted_measurement(std::size_t map_idx) const
   const auto x = state_(1);
   const auto y = state_(2);
 
-  const auto mx = state_(3 + 2*map_idx);
-  const auto my = state_(3 + 2*map_idx + 1);
+  const auto mx = state_(3 + 2 * map_idx);
+  const auto my = state_(3 + 2 * map_idx + 1);
 
   const auto dx = mx - x;
   const auto dy = my - y;
@@ -149,12 +151,11 @@ arma::vec EKF::predicted_measurement(std::size_t map_idx) const
 
 arma::mat EKF::measurement_jacobian(std::size_t map_idx) const
 {
-  const auto theta = state_(0);
   const auto x = state_(1);
   const auto y = state_(2);
 
-  const auto mx = state_(3 + 2*map_idx);
-  const auto my = state_(3 + 2*map_idx + 1);
+  const auto mx = state_(3 + 2 * map_idx);
+  const auto my = state_(3 + 2 * map_idx + 1);
 
   const auto dx = mx - x;
   const auto dy = my - y;
@@ -163,11 +164,11 @@ arma::mat EKF::measurement_jacobian(std::size_t map_idx) const
   const auto size = 3 + 2 * num_landmarks();
   arma::mat H = arma::zeros(2, size);
 
-  H(0, 0) =  0.0;
+  H(0, 0) = 0.0;
   H(0, 1) = -dx / std::sqrt(d);
   H(0, 2) = -dy / std::sqrt(d);
   H(1, 0) = -1.0;
-  H(1, 1) =  dy / d;
+  H(1, 1) = dy / d;
   H(1, 2) = -dx / d;
 
   H(0, 3 + 2 * map_idx) = dx / std::sqrt(d);
