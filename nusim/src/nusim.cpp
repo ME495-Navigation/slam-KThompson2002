@@ -305,7 +305,8 @@ private:
   {
     visualization_msgs::msg::Marker m;
 
-    m.header.frame_id = "nusim/world";
+    // Positions are relative to the true robot body frame.
+    m.header.frame_id = "red/base_footprint";
     m.header.stamp = this->now();
 
     m.ns = "red";
@@ -322,8 +323,13 @@ private:
 
     m.action = visualization_msgs::msg::Marker::ADD;
     std::normal_distribution<double> sensor_dist(0.0, std::sqrt(basic_sensor_variance));
-    m.pose.position.x = x + sensor_dist(get_random());
-    m.pose.position.y = y + sensor_dist(get_random());
+    // Rotate world-relative offset into robot body frame.
+    const double cos_t = std::cos(theta_);
+    const double sin_t = std::sin(theta_);
+    const double dx_body =  cos_t * dx + sin_t * dy;
+    const double dy_body = -sin_t * dx + cos_t * dy;
+    m.pose.position.x = dx_body + sensor_dist(get_random());
+    m.pose.position.y = dy_body + sensor_dist(get_random());
     m.pose.position.z = 0.125;
     m.pose.orientation.w = 1.0;
 

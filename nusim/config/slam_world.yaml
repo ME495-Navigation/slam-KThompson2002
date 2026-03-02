@@ -16,11 +16,11 @@
       r: 0.038
 
     # Laser scan
-    noise: 0.01          # std dev on range measurements [m]
+    noise: 0.01
 
     # Motion noise — causes dead-reckoning to drift from ground truth
-    input_noise:   0.01  # std dev added to wheel velocity commands [rad/s]
-    slip_fraction: 0.05  # uniform slip factor applied to each wheel each tick
+    input_noise:   0.01
+    slip_fraction: 0.05 
 
-    # Sensor noise — zero-mean Gaussian added to fake sensor obstacle positions
-    basic_sensor_variance: 0.0001  # variance [m^2] (std dev ~0.1 m)
+    # Sensor noise
+    basic_sensor_variance: 0.0001

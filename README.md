@@ -18,3 +18,8 @@ Odom error:
 x: 0.1308321191316738
 y: 0.04392329900151747
 z: 0.0
+
+
+Homework 3 SLAM screenshot:
+
+![Slam Image](nuslam/images/slam.png)

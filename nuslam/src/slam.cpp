@@ -28,7 +28,7 @@ public:
   Slam()
   : Node("slam")
   {
-    declare_parameter("body_id", "blue/base_footprint");
+    declare_parameter("body_id", "green/base_footprint");
     declare_parameter("odom_id", "odom");
     declare_parameter("wheel_left", "");
     declare_parameter("wheel_right", "");
@@ -135,24 +135,23 @@ private:
         continue;
       }
 
-      const turtlelib::Transform2D robot_pose = ekf_->pose();
-      const double dx = marker.pose.position.x - robot_pose.translation().x;
-      const double dy = marker.pose.position.y - robot_pose.translation().y;
-      const double r = std::sqrt(dx * dx + dy * dy);
-      const double phi = turtlelib::normalize_angle(std::atan2(dy, dx) - robot_pose.rotation());
+      // Markers arrive in the robot body frame (red/base_footprint), so r and phi
+      // are computed directly — no EKF pose subtraction needed or correct here.
+      const double mx = marker.pose.position.x;
+      const double my = marker.pose.position.y;
+      const double r = std::sqrt(mx * mx + my * my);
+      const double phi = turtlelib::normalize_angle(std::atan2(my, mx));
 
       ekf_->update(marker.id, r, phi);
       seen_ids_.insert(marker.id);
     }
 
-    // Re-broadcast map->odom now that the EKF pose has been corrected.
-    // Without this, the TF stays at the stale post-predict value until the
-    // next joint state arrives, causing the green robot to visibly snap.
+    // Re-broadcast map->odom
     if (!msg.markers.empty()) {
       publish_odom_and_tf(msg.markers.front().header.stamp);
     }
 
-    // --- Publish estimated landmark positions ---
+    // Publish estimated landmark positions
     visualization_msgs::msg::MarkerArray map_markers;
     for (const int id : seen_ids_) {
       const turtlelib::Vector2D pos = ekf_->landmark(id);
