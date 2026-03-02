@@ -18,6 +18,7 @@
 using std::placeholders::_1;
 using std::placeholders::_2;
 
+// missing documentation or ROS 2 api
 /// \brief Node that estimates the robot pose from wheel encoder positions.
 ///
 /// The node reads wheel joint names and kinematic parameters from ROS parameters,
@@ -29,6 +30,7 @@ public:
   Odometry()
   : Node("odometry")
   {
+      // superfluous this
     this->declare_parameter("body_id", "base_footprint");
     this->declare_parameter("odom_id", "odom");
     this->declare_parameter("wheel_left", "");
@@ -46,6 +48,7 @@ public:
       return;
     }
 
+    /// should not have magic numbers, store 0.16 and 0.033 as constexpr values somewhere
     this->declare_parameter<double>("track_width", 0.16);
     this->declare_parameter<double>("wheel_radius", 0.033);
     track_width = this->get_parameter("track_width").as_double();
@@ -95,7 +98,7 @@ private:
     turtlelib::Wheel wheels;
     for (size_t i = 0; i < js.name.size(); ++i) {
       if (js.name[i] == wheel_left) {
-        wheels.left = js.position[i];
+          wheels.left = js.position[i]; // .at()
       } else if (js.name[i] == wheel_right) {
         wheels.right = js.position[i];
       }
