@@ -129,7 +129,7 @@ public:
     range_min = this->get_parameter("range_min").as_double();
     range_max = this->get_parameter("range_max").as_double();
     angle_increment = this->get_parameter("angle_increments").as_double();
-    num_samples = this->get_parameter("num_samples").as_double();
+    num_samples = this->get_parameter("num_samples").as_int();
     resolution = this->get_parameter("resolution").as_double();
     noise = this->get_parameter("noise").as_double();
     input_noise = this->get_parameter("input_noise").as_double();
@@ -243,7 +243,6 @@ private:
   double input_noise = 0.0;
   double slip_fraction = 0.0;
 
-  std::mt19937 rng_{std::random_device{}()};
 
   std::vector<geometry_msgs::msg::PoseStamped> poses;
 
@@ -330,7 +329,7 @@ private:
 
     m.color.a = 1.0;
     m.color.r = 1.0;
-    m.color.g = 0.0;
+    m.color.g = 1.0;
     m.color.b = 0.0;
     m.lifetime = rclcpp::Duration::from_nanoseconds(0);
 
@@ -389,14 +388,12 @@ private:
 
   void wheel_callback(const nuturtlebot_msgs::msg::WheelCommands & msgs)
   {
-    constexpr double motor_cmd_per_rad_sec = 0.024;
-
     auto left_wheel_ui = static_cast<double>(msgs.left_velocity) * motor_cmd_per_rad_sec;
     auto right_wheel_ui = static_cast<double>(msgs.right_velocity) * motor_cmd_per_rad_sec;
     
     std::normal_distribution<double> d(0.0, input_noise);
-    left_wheel_vel = left_wheel_ui + d(rng_);
-    right_wheel_vel = right_wheel_ui + d(rng_);
+    left_wheel_vel = left_wheel_ui + d(get_random());
+    right_wheel_vel = right_wheel_ui + d(get_random());
   }
 
   /**
@@ -415,8 +412,8 @@ private:
     this->publisher_->publish(timestep_);
 
     std::uniform_real_distribution<double> slip_dist(-slip_fraction, slip_fraction);
-    wheel_pos.left += left_wheel_vel * (1.0 + slip_dist(rng_)) * dt;
-    wheel_pos.right += right_wheel_vel * (1.0 + slip_dist(rng_)) * dt;
+    wheel_pos.left += left_wheel_vel * (1.0 + slip_dist(get_random())) * dt;
+    wheel_pos.right += right_wheel_vel * (1.0 + slip_dist(get_random())) * dt;
 
     nuturtlebot_msgs::msg::SensorData msg;
     msg.stamp = this->get_clock()->now();
@@ -478,22 +475,21 @@ private:
     // Send the transformation
     tf_broadcaster_->sendTransform(t);
 
-    auto path = nav_msgs::msg::Path();
-    path.header.stamp = this->get_clock()->now();
-
     geometry_msgs::msg::PoseStamped pose;
-    pose.header.stamp = get_clock()->now();
+    pose.header.stamp = this->get_clock()->now();
     pose.header.frame_id = "nusim/world";
     pose.pose.position.x = x_;
     pose.pose.position.y = y_;
-
     pose.pose.orientation.x = q.x();
     pose.pose.orientation.y = q.y();
     pose.pose.orientation.z = q.z();
     pose.pose.orientation.w = q.w();
+    poses.push_back(pose);
 
+    nav_msgs::msg::Path path;
+    path.header.stamp = this->get_clock()->now();
     path.header.frame_id = "nusim/world";
-    path.poses.push_back(pose);
+    path.poses = poses;
     nav_path->publish(path);
 
     // Laser Scan implementation
@@ -604,7 +600,7 @@ private:
 
       // Only report a return if the hit is within sensor range
       if (min_t >= range_min && min_t <= range_max) {
-        const double noisy_range = min_t + noise_dist(rng_);
+        const double noisy_range = min_t + noise_dist(get_random());
         scan.ranges[s] = static_cast<float>(
           std::clamp(noisy_range, static_cast<double>(range_min), static_cast<double>(range_max)));
       }

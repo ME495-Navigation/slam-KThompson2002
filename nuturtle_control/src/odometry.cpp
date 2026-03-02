@@ -168,22 +168,21 @@ private:
 
     odom_pub->publish(odom);
 
-    auto path = nav_msgs::msg::Path();
-    path.header.stamp = this->get_clock()->now();
-
     geometry_msgs::msg::PoseStamped pose;
-    pose.header.stamp = get_clock()->now();
-    pose.header.frame_id = "odom";
+    pose.header.stamp = stamp;
+    pose.header.frame_id = odom_id;
     pose.pose.position.x = p.x;
     pose.pose.position.y = p.y;
-
     pose.pose.orientation.x = q.x();
     pose.pose.orientation.y = q.y();
     pose.pose.orientation.z = q.z();
     pose.pose.orientation.w = q.w();
+    poses.push_back(pose);
 
-    path.header.frame_id = "odom";
-    path.poses.push_back(pose);
+    nav_msgs::msg::Path path;
+    path.header.stamp = stamp;
+    path.header.frame_id = odom_id;
+    path.poses = poses;
     nav_path->publish(path);
 
     // Create Transform message

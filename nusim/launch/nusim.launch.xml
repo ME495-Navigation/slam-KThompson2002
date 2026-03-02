@@ -15,6 +15,5 @@
         args="0.0 -1.0 0.0 0 0 0 nusim/world red/odom"/>
     <node pkg="tf2_ros" exec="static_transform_publisher"
       args="0 0 0 0 0 0 red/odom red/base_footprint"/> -->
-    <node pkg="rviz2" exec="rviz2" args="-d $(find-pkg-share nusim)/config/nusim.rviz" if="$(var use_rviz)" on_exit="shutdown">
-    </node>
+    <node pkg="rviz2" exec="rviz2" args="-d $(find-pkg-share nusim)/config/nusim.rviz" if="$(eval '\'$(var use_rviz)\'== \'true\'')" on_exit="shutdown"/>
 </launch>
