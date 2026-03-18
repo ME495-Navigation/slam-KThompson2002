@@ -25,94 +25,118 @@ public:
   : Node("landmark")
   {
     this->declare_parameter("cluster_threshold", 0.1);
-    this->declare_parameter("min_cluster", 3);
+    this->declare_parameter("min_cluster", 2);
     this->declare_parameter("min_radius", 0.01);
     this->declare_parameter("max_radius", 0.2);
-    this->declare_paramter("body_id", "green/base_footprint");
+    this->declare_parameter("min_angle", M_PI / 2.0);
+    this->declare_parameter("max_angle", 3.0 * M_PI / 4.0);
+    this->declare_parameter("body_id", "red/base_footprint");
 
     cluster_threshold = this->get_parameter("cluster_threshold").as_double();
     min_cluster = this->get_parameter("min_cluster").as_int();
     min_radius = this->get_parameter("min_radius").as_double();
     max_radius = this->get_parameter("max_radius").as_double();
-    body_id = this->get_parameter("body_id").as_double();
+    min_angle = this->get_parameter("min_angle").as_double();
+    max_angle = this->get_parameter("max_angle").as_double();
+    body_id = this->get_parameter("body_id").as_string();
 
-    laser_scan = this->create_subscriber<sensor_msgs::msg::LaserScan>(
-      "laser_scan",
+    laser_scan = this->create_subscription<sensor_msgs::msg::LaserScan>(
+      "red/laser_scan",
       10,
-      std::bind(&nuslam::laser_callback, this, _1)
+      std::bind(&Landmark::laser_callback, this, _1)
     );
 
-    landmark_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/landmark_pub", 10);
+    landmark_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/landmark_pub",
+      10);
   }
+
 private:
-  rclcpp::Subscriber<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan;
+  rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr landmark_pub;
 
   // Circle Parameters
-  auto cluster_threshold = 0.1;
-  auto min_cluster = 3;
-  auto min_radius = 0.0;
-  auto max_radius = 5.0;
+  double cluster_threshold = 0.1;
+  double min_cluster = 3;
+  double min_radius = 0.0;
+  double max_radius = 5.0;
+  double min_angle = M_PI / 2.0;
+  double max_angle = 3.0 * M_PI / 4.0;
   std::string body_id;
 
-  void laser_callback(sensor_msgs::msg::LaserScan & msg)
+  void laser_callback(const sensor_msgs::msg::LaserScan & msg)
   {
-    std::vector<turtlelib::Point2D> points = [];
-    for (size_t i = 0; i < msg.ranges.size(); i++) 
-    {
-      auto r = msg.ranges.size();
-      if (r < msg.range_min || r > msg.range_max)
-      {
+    std::vector<turtlelib::Point2D> points{};
+    for (size_t i = 0; i < msg.ranges.size(); i++) {
+      auto r = msg.ranges[i];
+      if (r < msg.range_min || r > msg.range_max) {
         continue;
       }
       auto angle = msg.angle_min + i * msg.angle_increment;
-      points.append(Point2D{r * std::cos(angle), r * std::sin(angle)})
+      points.push_back(turtlelib::Point2D{r * std::cos(angle), r * std::sin(angle)});
     }
-    if (points.size() == 0) 
-    {
+
+    RCLCPP_INFO(get_logger(), "scan: %zu raw ranges, %zu valid points",
+      msg.ranges.size(), points.size());
+
+    if (points.size() == 0) {
+      RCLCPP_WARN(get_logger(), "no valid points after range filter, skipping");
       return;
     }
+
     auto clusters = nuslam::cluster_points(points, cluster_threshold);
-    
-    std::vector<nuslam::Circle> detected = [];
-    for (std::vector<Cluster> cluster : clusters)
-    {
-      if (!nuslam::is_circle(cluster)) 
-      {
+    RCLCPP_INFO(get_logger(), "clustered into %zu clusters", clusters.size());
+
+    std::vector<nuslam::Circle> detected{};
+    for (const auto & cluster : clusters) {
+      if (!nuslam::is_circle(cluster, min_angle, max_angle)) {
         continue;
       }
       auto circle = nuslam::fit_circle(cluster);
-      if (circle.r < min_radius || circle.r > max_radius)
-      {
+      RCLCPP_INFO(get_logger(), "  cluster size %zu -> circle (%.3f, %.3f) r=%.3f",
+        cluster.size(), circle.x, circle.y, circle.r);
+      if (circle.r < min_radius || circle.r > max_radius) {
+        RCLCPP_INFO(get_logger(), "    rejected by radius filter (min=%.3f max=%.3f)",
+          min_radius, max_radius);
         continue;
       }
       detected.push_back(circle);
     }
+
+    RCLCPP_INFO(get_logger(), "%zu circles passed all filters", detected.size());
+
     visualization_msgs::msg::MarkerArray landmarks;
-    for (std::size_t i = 0; i < detected.size(); i++)
-    {
-        visualization_msgs::msg::Marker m;
-        m.header.stamp = msg.header.stamp;
-        m.header.frame_id = body_id;
-        m.id = static_cast<int>(i);
-        m.type = visualization_msgs::msg::Marker::CYLINDER;
-        m.action = visualization_msgs::msg::Marker::ADD;
-        m.pose.position.x = detected[i].x;
-        m.pose.position.y = detected[i].y;
-        m.pose.position.z = 0.125;
-        m.pose.orientation.w = 1.0;
-        m.scale.x = detected[i].r * 2.0;
-        m.scale.y = detected[i].r * 2.0;
-        m.scale.z = 0.25;
-        m.color.r = 1.0;
-        m.color.g = 0.0;
-        m.color.b = 1.0;
-        m.color.a = 1.0;
-        landmarks.markers.push_back(m);
+    for (std::size_t i = 0; i < detected.size(); i++) {
+      visualization_msgs::msg::Marker m;
+      m.header.stamp = msg.header.stamp;
+      m.header.frame_id = body_id;
+      m.id = static_cast<int>(i);
+      m.type = visualization_msgs::msg::Marker::CYLINDER;
+      m.action = visualization_msgs::msg::Marker::ADD;
+      m.pose.position.x = detected[i].x;
+      m.pose.position.y = detected[i].y;
+      m.pose.position.z = 0.125;
+      m.pose.orientation.w = 1.0;
+      m.scale.x = detected[i].r * 2.0;
+      m.scale.y = detected[i].r * 2.0;
+      m.scale.z = 0.25;
+      m.color.r = 0.0;
+      m.color.g = 1.0;
+      m.color.b = 0.0;
+      m.color.a = 1.0;
+      landmarks.markers.push_back(m);
     }
 
     landmark_pub->publish(landmarks);
   }
 
-  
+};
+
+/// \brief Entry point for the landmark node.
+/// \return 0 on clean shutdown.
+int main(int argc, char ** argv)
+{
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<Landmark>());
+  rclcpp::shutdown();
+  return 0;
 }

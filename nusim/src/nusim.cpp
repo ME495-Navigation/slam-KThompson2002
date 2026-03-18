@@ -327,7 +327,7 @@ private:
     // Rotate world-relative offset into robot body frame.
     const double cos_t = std::cos(theta_);
     const double sin_t = std::sin(theta_);
-    const double dx_body =  cos_t * dx + sin_t * dy;
+    const double dx_body = cos_t * dx + sin_t * dy;
     const double dy_body = -sin_t * dx + cos_t * dy;
     m.pose.position.x = dx_body + sensor_dist(get_random());
     m.pose.position.y = dy_body + sensor_dist(get_random());

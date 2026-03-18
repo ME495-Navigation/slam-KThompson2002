@@ -18,14 +18,22 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
 add_executable(slam src/slam.cpp)
+add_executable(landmark src/landmark.cpp)
 add_library(ekf src/ekf.cpp)
+add_library(circle src/circle.cpp)
 target_include_directories(ekf PUBLIC include)
 target_link_libraries(ekf PUBLIC
   ${turtlelib_TARGETS}
   ${ARMADILLO_LIBRARIES}
   turtlelib::turtlelib
 )
-
+target_include_directories(circle PUBLIC include)
+target_link_libraries(circle PUBLIC
+  ${turtlelib_TARGETS}
+  ${ARMADILLO_LIBRARIES}
+  turtlelib::turtlelib
+)
+# target_include_directories(circle PUBLIC include)
 target_link_libraries(slam PUBLIC
   ekf
   ${nav_msgs_TARGETS}
@@ -36,6 +44,14 @@ target_link_libraries(slam PUBLIC
   ${sensor_msgs_TARGETS}
   ${ARMADILLO_LIBRARIES}
   ${visualization_msgs_TARGETS}
+  turtlelib::turtlelib
+  rclcpp::rclcpp
+)
+target_link_libraries(landmark PUBLIC
+  circle
+  ${sensor_msgs_TARGETS}
+  ${visualization_msgs_TARGETS}
+  ${turtlelib_TARGETS}
   turtlelib::turtlelib
   rclcpp::rclcpp
 )
@@ -59,10 +75,19 @@ if(BUILD_TESTING)
     GENERATE_RESULT_FOR_RETURN_CODE_ZERO
     COMMAND "$<TARGET_FILE:test_ekf>"
   )
+
+  add_executable(circle_tests test/circle_tests.cpp)
+  target_link_libraries(circle_tests circle Catch2::Catch2WithMain)
+  install(TARGETS circle_tests DESTINATION lib/${PROJECT_NAME})
+  ament_add_test(circle_tests
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND "$<TARGET_FILE:circle_tests>"
+  )
 endif()
 
 install(TARGETS
   slam
+  landmark
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch config

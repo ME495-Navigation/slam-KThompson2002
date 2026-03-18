@@ -15,8 +15,6 @@
 /// std::vector<turtlelib::Point2D> (polar → Cartesian) before calling cluster_points().
 
 #include <vector>
-#include <armadillo>
-#include <turtlelib>
 
 #include "turtlelib/geometry2d.hpp"
 
@@ -51,7 +49,7 @@ Circle fit_circle(const Cluster & cluster);
 /// \brief Classify a cluster as a circle (landmark) or non-circle (wall/noise).
 /// \param cluster At least 3 points.
 /// \return        true → treat as circle landmark; false → discard.
-bool is_circle(const Cluster & cluster);
+bool is_circle(const Cluster & cluster, const double min_angle, const double max_angle);
 
 }  // namespace nuslam
 
