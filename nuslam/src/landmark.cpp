@@ -85,7 +85,7 @@ private:
 
     auto clusters = nuslam::cluster_points(points, cluster_threshold);
     RCLCPP_INFO(get_logger(), "clustered into %zu clusters", clusters.size());
-
+    
     std::vector<nuslam::Circle> detected{};
     for (const auto & cluster : clusters) {
       if (!nuslam::is_circle(cluster, min_angle, max_angle)) {
@@ -119,9 +119,9 @@ private:
       m.scale.x = detected[i].r * 2.0;
       m.scale.y = detected[i].r * 2.0;
       m.scale.z = 0.25;
-      m.color.r = 0.0;
-      m.color.g = 1.0;
-      m.color.b = 0.0;
+      m.color.r = 1.0;
+      m.color.g = 0.0;
+      m.color.b = 1.0;
       m.color.a = 1.0;
       landmarks.markers.push_back(m);
     }

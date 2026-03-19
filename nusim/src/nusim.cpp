@@ -224,7 +224,8 @@ private:
   std::vector<double> xs;
   std::vector<double> ys;
   double r;
-  turtlelib::Wheel wheel_pos{0.0, 0.0};
+  turtlelib::Wheel wheel_pos{0.0, 0.0};         
+  turtlelib::Wheel wheel_pos_slipped{0.0, 0.0};
   double left_wheel_vel = 0.0;
   double right_wheel_vel = 0.0;
   std::unique_ptr<turtlelib::DiffDrive> diff;
@@ -423,9 +424,8 @@ private:
     timestep_.data++;
     this->publisher_->publish(timestep_);
 
-    std::uniform_real_distribution<double> slip_dist(-slip_fraction, slip_fraction);
-    wheel_pos.left += left_wheel_vel * (1.0 + slip_dist(get_random())) * dt;
-    wheel_pos.right += right_wheel_vel * (1.0 + slip_dist(get_random())) * dt;
+    wheel_pos.left  += left_wheel_vel * dt;
+    wheel_pos.right += right_wheel_vel * dt;
 
     nuturtlebot_msgs::msg::SensorData msg;
     msg.stamp = this->get_clock()->now();
@@ -434,7 +434,11 @@ private:
     msg.right_encoder = static_cast<int32_t>(std::round(wheel_pos.right * encoder_ticks_per_rad));
     sensor_data->publish(msg);
 
-    (void)diff->forwardKinematics(wheel_pos);
+    std::uniform_real_distribution<double> slip_dist(-slip_fraction, slip_fraction);
+    wheel_pos_slipped.left  += left_wheel_vel * (1.0 + slip_dist(get_random())) * dt;
+    wheel_pos_slipped.right += right_wheel_vel * (1.0 + slip_dist(get_random())) * dt;
+
+    (void)diff->forwardKinematics(wheel_pos_slipped);
 
     const turtlelib::Transform2D T = diff->pose();
     const turtlelib::Vector2D p = T.translation();
@@ -642,6 +646,7 @@ private:
     diff->setPose(turtlelib::Transform2D(turtlelib::Vector2D{x_, y_}, theta_));
 
     wheel_pos = {0.0, 0.0};
+    wheel_pos_slipped = {0.0, 0.0};
     left_wheel_vel = 0.0;
     right_wheel_vel = 0.0;
   }

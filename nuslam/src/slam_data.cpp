@@ -1,5 +1,6 @@
 /// \file
 /// \brief ROS 2 node that performs EKF-SLAM for a differential-drive robot.
+#include <algorithm>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -14,18 +15,21 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 
 #include "tf2/LinearMath/Quaternion.h"
+#include "tf2/exceptions.h"
+#include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_broadcaster.h"
+#include "tf2_ros/transform_listener.h"
 
 #include "turtlelib/diff_drive.hpp"
 #include "nuslam/ekf.hpp"
 
 using std::placeholders::_1;
 
-class Slam : public rclcpp::Node
+class Slam_data : public rclcpp::Node
 {
 public:
-  Slam()
-  : Node("slam")
+  Slam_data()
+  : Node("slam_data")
   {
     declare_parameter("body_id", "green/base_footprint");
     declare_parameter("odom_id", "odom");
@@ -35,6 +39,10 @@ public:
     declare_parameter("track_width", 0.16);
     declare_parameter("process_noise", 1e-3);
     declare_parameter("sensing_noise", 1e-2);
+    declare_parameter("threshold", 15.0);
+    declare_parameter("min_observations", 3);
+    declare_parameter("provisional_match_dist", 0.3);
+    declare_parameter("max_provisional_age", 5);
 
     body_id_ = get_parameter("body_id").as_string();
     odom_id_ = get_parameter("odom_id").as_string();
@@ -44,6 +52,10 @@ public:
     const double track_width = get_parameter("track_width").as_double();
     const double process_noise = get_parameter("process_noise").as_double();
     const double sensing_noise = get_parameter("sensing_noise").as_double();
+    threshold = get_parameter("threshold").as_double();
+    min_observations_ = get_parameter("min_observations").as_int();
+    provisional_match_dist_ = get_parameter("provisional_match_dist").as_double();
+    max_provisional_age_ = get_parameter("max_provisional_age").as_int();
 
     if (wheel_left_.empty() || wheel_right_.empty()) {
       RCLCPP_ERROR(get_logger(), "wheel_left and wheel_right parameters must be set.");
@@ -62,30 +74,43 @@ public:
     map_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/map", 10);
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+    tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
     joint_sub_ = create_subscription<sensor_msgs::msg::JointState>(
       "joint_states", 10,
-      std::bind(&Slam::joint_callback, this, _1)
+      std::bind(&Slam_data::joint_callback, this, _1)
     );
 
     sensor_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
-      "fake_sensor", 10,
-      std::bind(&Slam::sensor_callback, this, _1)
+      "landmark_pub", 10,
+      std::bind(&Slam_data::sensor_callback, this, _1)
     );
   }
 
 private:
+  struct Provisional
+  {
+    double x, y;  // map-frame position estimate (running average)
+    int count;    // number of times matched
+    int age;      // scan callbacks since last matched
+  };
+
   // Parameters
   std::string body_id_;
   std::string odom_id_;
   std::string wheel_left_;
   std::string wheel_right_;
+  double threshold;
+  int min_observations_;
+  double provisional_match_dist_;
+  int max_provisional_age_;
 
   // State
   std::unique_ptr<turtlelib::DiffDrive> diff_;
   std::unique_ptr<nuslam::EKF> ekf_;
   nav_msgs::msg::Path slam_path_;
-  std::set<int> seen_ids_;
+  std::vector<Provisional> provisionals_;
 
   // Publishers
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
@@ -94,6 +119,8 @@ private:
 
   // TF
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+  std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
   // Subscribers
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
@@ -128,33 +155,88 @@ private:
 
   void sensor_callback(const visualization_msgs::msg::MarkerArray & msg)
   {
-    // --- EKF update step ---
+    // Age all provisionals at the start of each scan
+    for (auto & p : provisionals_) {
+      p.age++;
+    }
+    double radius = 0.0;
+
     for (const auto & marker : msg.markers) {
       if (marker.action == visualization_msgs::msg::Marker::DELETE) {
         continue;
       }
 
       // Inline Citation - [7]
-      // Markers arrive in the robot body frame (red/base_footprint), so r and phi
-      // are computed directly — no EKF pose subtraction needed or correct here.
+      // Markers arrive in the robot body frame (red/base_footprint).
       const double mx = marker.pose.position.x;
       const double my = marker.pose.position.y;
+      radius = marker.scale.x;
       const double r = std::sqrt(mx * mx + my * my);
       const double phi = turtlelib::normalize_angle(std::atan2(my, mx));
+      
       // End Inline Citation
 
-      ekf_->update(marker.id, r, phi);
-      seen_ids_.insert(marker.id);
+      // 1. Try Mahalanobis association with confirmed EKF landmarks
+      const int ekf_id = ekf_->try_associate(r, phi, threshold);
+      if (ekf_id >= 0) {
+        ekf_->update(ekf_id, r, phi);
+        continue;
+      }
+
+      // 2. No confirmed match — project measurement to map frame
+      const turtlelib::Transform2D ekf_pose = ekf_->pose();
+      const double theta = ekf_pose.rotation();
+      const turtlelib::Vector2D t = ekf_pose.translation();
+      const double map_x = t.x + r * std::cos(phi + theta);
+      const double map_y = t.y + r * std::sin(phi + theta);
+
+      // 3. Find closest provisional landmark
+      int best_prov = -1;
+      double best_dist = provisional_match_dist_;
+      for (int k = 0; k < static_cast<int>(provisionals_.size()); k++) {
+        const double d = std::hypot(map_x - provisionals_[k].x, map_y - provisionals_[k].y);
+        if (d < best_dist) {
+          best_dist = d;
+          best_prov = k;
+        }
+      }
+
+      if (best_prov >= 0) {
+        auto & prov = provisionals_.at(best_prov);
+        prov.count++;
+        prov.age = 0;
+        // Running average of map-frame position
+        prov.x = (prov.x * (prov.count - 1) + map_x) / prov.count;
+        prov.y = (prov.y * (prov.count - 1) + map_y) / prov.count;
+
+        if (prov.count >= min_observations_) {
+          ekf_->update_with_association(r, phi, threshold);
+          // const int new_id = ekf_->num_landmarks();
+          // ekf_->initialize_landmark_at(new_id, prov.x, prov.y);
+          // ekf_->update(new_id, r, phi);
+          provisionals_.erase(provisionals_.begin() + best_prov);
+        }
+      } else {
+        // 4. New provisional
+        provisionals_.push_back({map_x, map_y, 1, 0});
+      }
     }
+
+    // Remove stale provisionals
+    provisionals_.erase(
+      std::remove_if(
+        provisionals_.begin(), provisionals_.end(),
+        [this](const Provisional & p) {return p.age > max_provisional_age_;}),
+      provisionals_.end());
 
     // Re-broadcast map->odom
     if (!msg.markers.empty()) {
       publish_odom_and_tf(msg.markers.front().header.stamp);
     }
 
-    // Publish estimated landmark positions
+    // Publish confirmed EKF landmarks
     visualization_msgs::msg::MarkerArray map_markers;
-    for (const int id : seen_ids_) {
+    for (int id = 0; id < static_cast<int>(ekf_->num_landmarks()); ++id) {
       const turtlelib::Vector2D pos = ekf_->landmark(id);
 
       visualization_msgs::msg::Marker m;
@@ -167,8 +249,8 @@ private:
       m.pose.position.y = pos.y;
       m.pose.position.z = 0.125;
       m.pose.orientation.w = 1.0;
-      m.scale.x = 0.076;
-      m.scale.y = 0.076;
+      m.scale.x = radius;
+      m.scale.y = radius;
       m.scale.z = 0.25;
       m.color.a = 1.0;
       m.color.r = 0.0;
@@ -247,7 +329,7 @@ private:
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<Slam>());
+  rclcpp::spin(std::make_shared<Slam_data>());
   rclcpp::shutdown();
   return 0;
 }

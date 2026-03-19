@@ -195,4 +195,56 @@ turtlelib::Vector2D EKF::landmark(int id) const
   return {state_(3 + 2 * j), state_(3 + 2 * j + 1)};
 }
 
+int EKF::try_associate(double r, double phi, double threshold) const
+{
+  const auto N = static_cast<int>(num_landmarks());
+  double min_dist = threshold;
+  int best_id = -1;
+
+  for (int k = 0; k < N; k++) {
+    const arma::mat H = measurement_jacobian(static_cast<std::size_t>(k));
+    const arma::mat Psi = H * P_ * H.t() + R_;
+    const arma::vec z_hat = predicted_measurement(static_cast<std::size_t>(k));
+
+    arma::vec dz = {r - z_hat(0), turtlelib::normalize_angle(phi - z_hat(1))};
+    const double d = arma::as_scalar(dz.t() * Psi.i() * dz);
+
+    if (d < min_dist) {
+      min_dist = d;
+      best_id = k;
+    }
+  }
+
+  return best_id;
+}
+
+void EKF::initialize_landmark_at(int id, double mx, double my)
+{
+  const std::size_t j = landmark_indices_.size();
+  landmark_indices_[id] = j;
+
+  state_.resize(state_.n_elem + 2);
+  state_(3 + 2 * j) = mx;
+  state_(3 + 2 * j + 1) = my;
+
+  const std::size_t old_size = 3 + 2 * j;
+  const std::size_t new_size = old_size + 2;
+  arma::mat P_new = arma::zeros(new_size, new_size);
+  P_new.submat(0, 0, old_size - 1, old_size - 1) = P_;
+  P_new(old_size, old_size) = 1e6;
+  P_new(old_size + 1, old_size + 1) = 1e6;
+  P_ = P_new;
+}
+
+void EKF::update_with_association(double r, double phi, double threshold)
+{
+  int best_id = try_associate(r, phi, threshold);
+  if (best_id < 0) {
+    const auto N = static_cast<int>(num_landmarks());
+    initialize_landmark(N, r, phi);
+    best_id = N;
+  }
+  update(best_id, r, phi);
+}
+
 }  // namespace nuslam

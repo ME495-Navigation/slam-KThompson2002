@@ -58,6 +58,22 @@ public:
   /// \brief Return the current state covariance matrix, size (3+2N) x (3+2N).
   arma::mat covariance() const;
 
+  /// \brief Run Mahalanobis data association for one measurement and call the EKF update step.
+  ///        Creates a new landmark if no confirmed match is found.
+  void update_with_association(double r, double phi, double threshold);
+
+  /// \brief Try to associate a measurement with an existing landmark using Mahalanobis distance.
+  ///        Does NOT create new landmarks or modify state.
+  /// \return The best matching landmark id (0-indexed), or -1 if no landmark is within threshold.
+  int try_associate(double r, double phi, double threshold) const;
+
+  /// \brief Initialize a new landmark directly at a known map-frame position.
+  ///        Used when the caller has already converted to map frame (e.g. via TF lookup).
+  /// \param id  Landmark identifier.
+  /// \param mx  Map-frame x position.
+  /// \param my  Map-frame y position.
+  void initialize_landmark_at(int id, double mx, double my);
+
 private:
   /// \brief Add a new landmark to the state vector and covariance matrix.
   ///        Converts the first measurement (r, phi) into a map-frame position

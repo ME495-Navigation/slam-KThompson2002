@@ -18,6 +18,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 
 add_executable(slam src/slam.cpp)
+add_executable(slam_data src/slam_data.cpp)
 add_executable(landmark src/landmark.cpp)
 add_library(ekf src/ekf.cpp)
 add_library(circle src/circle.cpp)
@@ -35,6 +36,19 @@ target_link_libraries(circle PUBLIC
 )
 # target_include_directories(circle PUBLIC include)
 target_link_libraries(slam PUBLIC
+  ekf
+  ${nav_msgs_TARGETS}
+  ${geometry_msgs_TARGETS}
+  ${tf2_TARGETS}
+  ${tf2_ros_TARGETS}
+  ${turtlelib_TARGETS}
+  ${sensor_msgs_TARGETS}
+  ${ARMADILLO_LIBRARIES}
+  ${visualization_msgs_TARGETS}
+  turtlelib::turtlelib
+  rclcpp::rclcpp
+)
+target_link_libraries(slam_data PUBLIC
   ekf
   ${nav_msgs_TARGETS}
   ${geometry_msgs_TARGETS}
@@ -88,6 +102,7 @@ endif()
 install(TARGETS
   slam
   landmark
+  slam_data
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch config
