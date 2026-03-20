@@ -22,3 +22,11 @@ On PC:
 `ros2 launch nuslam pc_bringup.launch.xml`
 
 Demo Run on Real Robot [Parameters still need to be tuned to fix position errors]:
+
+
+
+Changes which can be done to optimize real robot performance:
+
+- Reduce initial Covariance
+- Tune the threshold required for establishing a landmark
+- Tune the time before resetting provisional time
