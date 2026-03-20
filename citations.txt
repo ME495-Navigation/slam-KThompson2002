@@ -5,3 +5,4 @@
 [5] Derek Dietz for header and footer SVG format
 [6] Chatgpt 4.2. Open AI. Used on Mar 1st, 2026, Transcript: https://chatgpt.com/share/69a612fe-1cb0-8008-8a23-2144c35c9294
 [7] Claude Sonnet 4.6. Anthropic, Used on Mar 2nd, 2026, Transcript: citations/claude.txt
+[8] Claude Sonnet 4.6. Anthropic, Used on Mar 19th, 2026, Transcript: citations/claude2.txt
