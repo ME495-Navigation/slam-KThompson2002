@@ -1,0 +1,73 @@
+<launch>
+    <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.xml">
+        <arg name="use_jsp" value="false"/>
+        <arg name="use_rviz" value="false"/>
+        <arg name="color" value="blue"/>
+    </include>
+
+    <node pkg="nuturtle_control" exec="turtle_control">
+        <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+        <remap from="wheel_cmd" to="wheel_cmd"/>
+        <remap from="sensor_data" to="sensor_data"/>
+        <remap from="joint_states" to="blue/joint_states"/>
+    </node>
+
+    <node pkg="nuturtle_control" exec="odometry" name="odometry">
+        <param name="body_id" value="blue/base_footprint"/>
+        <param name="odom_id" value="blue/odom"/>
+        <param name="wheel_left" value="wheel_left_joint"/>
+        <param name="wheel_right" value="wheel_right_joint"/>
+        <param name="track" value="0.16"/>
+        <param name="radius" value="0.033"/>
+        <remap from="joint_states" to="blue/joint_states"/>
+        <remap from="nav_path"     to="blue/nav_path"/>
+    </node>
+
+    <node pkg="nuslam" exec="landmark" name="landmark">
+        <param name="cluster_threshold" value="0.1"/>
+        <param name="min_cluster"       value="5"/>
+        <param name="min_radius"        value="0.02"/>
+        <param name="max_radius"        value="0.08"/>
+        <param name="min_angle"         value="1.5"/>
+        <param name="max_angle"         value="2.5"/>
+        <param name="body_id"           value="blue/base_footprint"/>
+        <remap from="red/laser_scan" to="/scan"/>
+    </node>
+
+    <node pkg="nuslam" exec="slam_data" name="slam">
+        <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+        <param name="body_id"       value="green/base_footprint"/>
+        <param name="odom_id"       value="odom"/>
+        <param name="wheel_left"    value="wheel_left_joint"/>
+        <param name="wheel_right"   value="wheel_right_joint"/>
+        <param name="sensing_noise"          value="0.004"/>
+        <param name="threshold"              value="50.0"/>
+        <param name="min_observations"       value="3"/>
+        <param name="provisional_match_dist" value="0.2"/>
+        <param name="max_provisional_age"    value="6"/>
+        <remap from="joint_states"  to="blue/joint_states"/>
+        <remap from="landmark_pub"  to="/landmark/landmark_pub"/>
+    </node>
+
+    <node pkg="nuturtle_control" exec="odometry" name="odometry">
+        <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+        <param name="body_id"     value="green/base_footprint"/>
+        <param name="odom_id"     value="odom"/>
+        <param name="wheel_left"  value="wheel_left_joint"/>
+        <param name="wheel_right" value="wheel_right_joint"/>
+        <param name="track" value="0.16"/>
+        <param name="radius" value="0.033"/>
+        <remap from="joint_states" to="blue/joint_states"/>
+        <remap from="nav_path"     to="green/nav_path"/>
+    </node>
+
+    <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.xml">
+        <arg name="use_jsp"  value="false"/>
+        <arg name="use_rviz" value="false"/>
+        <arg name="color"    value="green"/>
+    </include>
+
+    <node pkg="tf2_ros" exec="static_transform_publisher" args="0 0 0 0 0 0 map blue/odom"/> 
+
+    <node pkg="rviz2" exec="rviz2" args="-d $(find-pkg-share nuslam)/config/real_turtle.rviz" on_exit="shutdown"/>
+</launch>

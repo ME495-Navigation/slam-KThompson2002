@@ -42,7 +42,7 @@ public:
 
     laser_scan = this->create_subscription<sensor_msgs::msg::LaserScan>(
       "red/laser_scan",
-      10,
+      rclcpp::QoS(10).best_effort(),
       std::bind(&Landmark::laser_callback, this, _1)
     );
 
@@ -85,7 +85,7 @@ private:
 
     auto clusters = nuslam::cluster_points(points, cluster_threshold);
     RCLCPP_INFO(get_logger(), "clustered into %zu clusters", clusters.size());
-    
+
     std::vector<nuslam::Circle> detected{};
     for (const auto & cluster : clusters) {
       if (!nuslam::is_circle(cluster, min_angle, max_angle)) {

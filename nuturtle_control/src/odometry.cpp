@@ -90,6 +90,7 @@ private:
   double wheel_radius;
   std::unique_ptr<turtlelib::DiffDrive> diff;
   turtlelib::Wheel last_wheels;
+  bool wheels_initialized_ = false;
 
   std::vector<geometry_msgs::msg::PoseStamped> poses;
 
@@ -109,6 +110,13 @@ private:
       }
     }
     last_wheels = wheels;
+
+    if (!wheels_initialized_) {
+      diff->forwardKinematics(wheels);
+      diff->setPose(turtlelib::Transform2D{});
+      wheels_initialized_ = true;
+      return;
+    }
 
     turtlelib::Twist2D Vb = diff->forwardKinematics(wheels);
 

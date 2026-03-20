@@ -224,7 +224,7 @@ private:
   std::vector<double> xs;
   std::vector<double> ys;
   double r;
-  turtlelib::Wheel wheel_pos{0.0, 0.0};         
+  turtlelib::Wheel wheel_pos{0.0, 0.0};
   turtlelib::Wheel wheel_pos_slipped{0.0, 0.0};
   double left_wheel_vel = 0.0;
   double right_wheel_vel = 0.0;
@@ -424,7 +424,7 @@ private:
     timestep_.data++;
     this->publisher_->publish(timestep_);
 
-    wheel_pos.left  += left_wheel_vel * dt;
+    wheel_pos.left += left_wheel_vel * dt;
     wheel_pos.right += right_wheel_vel * dt;
 
     nuturtlebot_msgs::msg::SensorData msg;
@@ -435,7 +435,7 @@ private:
     sensor_data->publish(msg);
 
     std::uniform_real_distribution<double> slip_dist(-slip_fraction, slip_fraction);
-    wheel_pos_slipped.left  += left_wheel_vel * (1.0 + slip_dist(get_random())) * dt;
+    wheel_pos_slipped.left += left_wheel_vel * (1.0 + slip_dist(get_random())) * dt;
     wheel_pos_slipped.right += right_wheel_vel * (1.0 + slip_dist(get_random())) * dt;
 
     (void)diff->forwardKinematics(wheel_pos_slipped);

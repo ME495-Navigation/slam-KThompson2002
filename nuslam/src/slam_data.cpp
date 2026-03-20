@@ -91,9 +91,9 @@ public:
 private:
   struct Provisional
   {
-    double x, y;  // map-frame position estimate (running average)
-    int count;    // number of times matched
-    int age;      // scan callbacks since last matched
+    double x, y;
+    int count;
+    int age;
   };
 
   // Parameters
@@ -111,6 +111,7 @@ private:
   std::unique_ptr<nuslam::EKF> ekf_;
   nav_msgs::msg::Path slam_path_;
   std::vector<Provisional> provisionals_;
+  bool wheels_initialized_ = false;
 
   // Publishers
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
@@ -143,6 +144,16 @@ private:
       }
     }
 
+    // On first message, set the wheel reference without computing motion.
+    // The turtlebot accumulates encoder position since boot, so the first
+    // message would otherwise produce a large spurious jump.
+    if (!wheels_initialized_) {
+      diff_->forwardKinematics(wheels);
+      diff_->setPose(turtlelib::Transform2D{});
+      wheels_initialized_ = true;
+      return;
+    }
+
     // Forward kinematics: updates diff_ internal pose and returns body-frame twist
     const turtlelib::Twist2D twist = diff_->forwardKinematics(wheels);
 
@@ -173,7 +184,7 @@ private:
       radius = marker.scale.x;
       const double r = std::sqrt(mx * mx + my * my);
       const double phi = turtlelib::normalize_angle(std::atan2(my, mx));
-      
+
       // End Inline Citation
 
       // 1. Try Mahalanobis association with confirmed EKF landmarks

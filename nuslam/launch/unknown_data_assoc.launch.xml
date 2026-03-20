@@ -47,7 +47,7 @@
             <param name="min_radius"        value="0.08"/>
             <param name="max_radius"        value="0.12"/>
             <param name="min_angle"         value="1.5"/>
-            <param name="max_angle"         value="3.14"/>
+            <param name="max_angle"         value="2.5"/>
         </node>
 
         <node pkg="nuslam" exec="slam_data" name="slam">
@@ -57,7 +57,7 @@
             <param name="wheel_left"    value="wheel_left_joint"/>
             <param name="wheel_right"   value="wheel_right_joint"/>
             <param name="sensing_noise"          value="0.001"/>
-            <param name="threshold"              value="50.0"/>
+            <param name="threshold"              value="20.0"/>
             <param name="min_observations"       value="3"/>
             <param name="provisional_match_dist" value="0.2"/>
             <param name="max_provisional_age"    value="5"/>

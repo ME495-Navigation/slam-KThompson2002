@@ -16,7 +16,7 @@
       r: 0.10
 
     # Laser scan
-    noise: 0.002
+    noise: 0.004
 
     # Motion noise — causes dead-reckoning to drift from ground truth
     input_noise:   0.01
