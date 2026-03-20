@@ -14,6 +14,10 @@ z: 0.0
 Simulation Video:
 
 
+https://github.com/user-attachments/assets/b0fe906f-7683-428a-ba8f-88fc58ca62ce
+
+
+
 Real Robot Run with:
 On Turtlebot:
 `ros2 launch nuslam turtlebot_bringup.launch.xml`
@@ -22,6 +26,10 @@ On PC:
 `ros2 launch nuslam pc_bringup.launch.xml`
 
 Demo Run on Real Robot [Parameters still need to be tuned to fix position errors]:
+
+
+
+https://github.com/user-attachments/assets/db032f0c-22ce-47be-a692-7124266b6f14
 
 
 
